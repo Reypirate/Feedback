@@ -1,0 +1,37 @@
+# Workspace
+node_modules
+.turbo
+.tanstack
+dist
+dist-ssr
+*.tsbuildinfo
+
+# Environment
+.env
+.env*.local
+!.env.example
+
+# Logs
+*.log
+*.sarif
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.sln
+*.sw?
+
+# Data
+data/
+storage/
+
+# Test artifacts
+coverage/
+playwright-report/
+test-results/

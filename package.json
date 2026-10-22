@@ -1,0 +1,45 @@
+{
+  "name": "react-hono-template",
+  "version": "0.1.2",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "bun --env-file=.env scripts/start.mjs",
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "oxlint .",
+    "typecheck": "turbo typecheck && tsc -p tests/tsconfig.json",
+    "test": "turbo test",
+    "test:integration": "bun test --timeout 15000 tests/integration",
+    "test:e2e": "pnpm build && playwright test",
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "format": "oxfmt --write .",
+    "format:check": "oxfmt --check .",
+    "clean": "git clean -xdf .cache .turbo dist node_modules .tanstack coverage apps/*/dist packages/*/dist",
+    "db:push": "pnpm --filter=@repo/db push",
+    "db:generate": "pnpm --filter=@repo/db generate",
+    "db:migrate": "pnpm --filter=@repo/db migrate",
+    "db:check": "pnpm --filter=@repo/db check",
+    "db:check-drift": "node scripts/check-migration-drift.mjs",
+    "services:up": "docker compose up -d --wait postgres maildev minio && docker compose run --rm minio_init",
+    "services:down": "docker compose down",
+    "services:test": "docker compose --profile test up -d --wait postgres_test",
+    "db:studio": "pnpm --filter=@repo/db studio"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "@types/bun": "catalog:",
+    "@types/node": "catalog:",
+    "jsdom": "catalog:",
+    "oxfmt": "catalog:",
+    "oxlint": "catalog:",
+    "turbo": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "engines": {
+    "node": "^22.22.2 || ^24.15.0 || >=26.0.0",
+    "pnpm": ">=10.33.3"
+  },
+  "packageManager": "pnpm@10.33.3"
+}
