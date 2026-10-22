@@ -1,4 +1,5 @@
 import type { ClientEnv } from "./env-config";
+import type { FeedbackStore } from "./feedback-store";
 import type { ApiEnv, GetSession } from "./session";
 
 import { Hono } from "hono";
@@ -7,12 +8,14 @@ import { requestId } from "hono/request-id";
 import { secureHeaders } from "hono/secure-headers";
 
 import { handleError } from "./errors";
+import { createFeedbackRoutes } from "./feedback-routes";
 import { createOpenApiDocument, scalarDocument } from "./openapi";
 import { requestLogger } from "./request-logger";
 import { createRequireSession } from "./session";
 
 type AppOptions = {
   env: ClientEnv;
+  feedback?: FeedbackStore;
   auth: {
     handler: (request: Request) => Promise<Response>;
     getSession: GetSession;
@@ -34,7 +37,7 @@ function createApiRoutes(env: ClientEnv, getSession: GetSession) {
     .get("/scalar", (c) => c.html(scalarDocument));
 }
 
-export function createApp({ env, auth }: AppOptions) {
+export function createApp({ env, auth, feedback }: AppOptions) {
   const app = new Hono<ApiEnv>();
   app.use("*", requestId());
   app.use("*", requestLogger);
@@ -58,6 +61,14 @@ export function createApp({ env, auth }: AppOptions) {
   app.get("/health", (c) => c.json({ status: "ok", timestamp: new Date().toISOString() }));
   const apiRoutes = createApiRoutes(env, auth.getSession);
   app.route("/", apiRoutes);
+  if (feedback)
+    app.route(
+      "/api",
+      createFeedbackRoutes(feedback, auth.getSession, [
+        new URL(env.VITE_APP_URL).origin,
+        new URL(env.VITE_API_URL).origin,
+      ]),
+    );
   app.all("/api", (c) => c.json({ error: "Not Found" }, 404));
   app.all("/api/*", (c) => c.json({ error: "Not Found" }, 404));
   app.notFound((c) => c.json({ error: "Not Found" }, 404));

@@ -1,5 +1,7 @@
 # Documentation
 
+For the Ardiente survey, start with [Feedback setup and operation](FEEDBACK.md).
+
 These guides describe how to develop, extend, test, and deploy this repository. Run package
 commands from the repository root unless a guide says otherwise.
 

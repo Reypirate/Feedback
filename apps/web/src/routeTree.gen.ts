@@ -10,33 +10,80 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminRouteImport } from './routes/admin'
+import { Route as PreviewRouteImport } from './routes/preview'
+import { Route as FeedbackSlugRouteImport } from './routes/feedback.$slug'
+import { Route as AdminFeedbackSlugRouteImport } from './routes/admin_.feedback.$slug'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PreviewRoute = PreviewRouteImport.update({
+  id: '/preview',
+  path: '/preview',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FeedbackSlugRoute = FeedbackSlugRouteImport.update({
+  id: '/feedback/$slug',
+  path: '/feedback/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminFeedbackSlugRoute = AdminFeedbackSlugRouteImport.update({
+  id: '/admin_/feedback/$slug',
+  path: '/admin/feedback/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
+  '/preview': typeof PreviewRoute
+  '/feedback/$slug': typeof FeedbackSlugRoute
+  '/admin/feedback/$slug': typeof AdminFeedbackSlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
+  '/preview': typeof PreviewRoute
+  '/feedback/$slug': typeof FeedbackSlugRoute
+  '/admin/feedback/$slug': typeof AdminFeedbackSlugRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
+  '/preview': typeof PreviewRoute
+  '/feedback/$slug': typeof FeedbackSlugRoute
+  '/admin_/feedback/$slug': typeof AdminFeedbackSlugRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    '/' | '/admin' | '/preview' | '/feedback/$slug' | '/admin/feedback/$slug'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/admin' | '/preview' | '/feedback/$slug' | '/admin/feedback/$slug'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin'
+    | '/preview'
+    | '/feedback/$slug'
+    | '/admin_/feedback/$slug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRoute
+  PreviewRoute: typeof PreviewRoute
+  FeedbackSlugRoute: typeof FeedbackSlugRoute
+  AdminFeedbackSlugRoute: typeof AdminFeedbackSlugRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +95,43 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/preview': {
+      id: '/preview'
+      path: '/preview'
+      fullPath: '/preview'
+      preLoaderRoute: typeof PreviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/feedback/$slug': {
+      id: '/feedback/$slug'
+      path: '/feedback/$slug'
+      fullPath: '/feedback/$slug'
+      preLoaderRoute: typeof FeedbackSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin_/feedback/$slug': {
+      id: '/admin_/feedback/$slug'
+      path: '/admin/feedback/$slug'
+      fullPath: '/admin/feedback/$slug'
+      preLoaderRoute: typeof AdminFeedbackSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRoute,
+  PreviewRoute: PreviewRoute,
+  FeedbackSlugRoute: FeedbackSlugRoute,
+  AdminFeedbackSlugRoute: AdminFeedbackSlugRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

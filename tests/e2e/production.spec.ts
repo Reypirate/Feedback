@@ -8,15 +8,16 @@ test("production frontend renders with runtime configuration and working assets"
   const runtime = page.waitForResponse((response) => response.url().endsWith("/api/runtime.js"));
   await page.goto("/");
   await expect(
-    page.getByRole("heading", { name: /A full-stack React and Hono monorepo/u }),
+    page.getByRole("heading", { name: "Ardiente Training & Club Feedback" }),
   ).toBeVisible();
   expect((await runtime).status()).toBe(200);
   expect(await page.evaluate(() => window.__env?.VITE_API_URL)).toBe("http://127.0.0.1:4101");
-  await expect(page.getByRole("link", { name: "API reference", exact: true })).toHaveAttribute(
+  await expect(page.getByRole("link", { name: "EXCO access", exact: true })).toHaveAttribute(
     "href",
-    "/api/scalar",
+    "/admin",
   );
   expect(errors).toEqual([]);
+  await page.screenshot({ path: "test-results/ardiente-desktop.png", fullPage: true });
 });
 
 test("direct frontend deep links render the router's not-found page and recover", async ({
@@ -26,7 +27,7 @@ test("direct frontend deep links render the router's not-found page and recover"
   await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
   await page.getByRole("link", { name: "Go home" }).click();
   await expect(
-    page.getByRole("heading", { name: /A full-stack React and Hono monorepo/u }),
+    page.getByRole("heading", { name: "Ardiente Training & Club Feedback" }),
   ).toBeVisible();
 });
 

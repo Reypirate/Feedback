@@ -1,4 +1,5 @@
 # Workspace
+/skills/
 node_modules
 .turbo
 .tanstack

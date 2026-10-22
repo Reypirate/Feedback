@@ -8,6 +8,20 @@
       "when": 1791974517317,
       "tag": "0000_curious_firebrand",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792648582746,
+      "tag": "0001_lethal_puff_adder",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792649197141,
+      "tag": "0002_condemned_harpoon",
+      "breakpoints": true
     }
   ]
 }

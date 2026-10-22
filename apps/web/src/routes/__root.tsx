@@ -1,57 +1,52 @@
-import { createRootRoute, Link, Outlet } from "@tanstack/react-router";
-import { TanStackRouterDevtools } from "@tanstack/router-devtools";
+﻿import { createRootRoute, Link, Outlet } from "@tanstack/react-router";
+import { Pause, Play } from "lucide-react";
+import { useState } from "react";
 
+import { CloudShader } from "../components/ui/cloud-shader";
 import { NotFoundPage } from "../features/not-found/not-found";
 
-export const Route = createRootRoute({
-  component: () => (
-    <div className="bg-background text-foreground flex min-h-screen w-full flex-col">
-      <header className="bg-background/80 sticky top-0 z-50 w-full border-b backdrop-blur-md">
-        <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
-          <div className="flex items-center gap-8">
-            <Link to="/" className="text-primary text-xl font-bold tracking-tight">
-              Template
+function AppLayout() {
+  const [paused, setPaused] = useState(false);
+  return (
+    <div className="site-shell">
+      <CloudShader className="cloud-background" speed={paused ? 0 : 0.35} count={6} />
+      <a href="#main-content" className="skip-link">
+        Skip to content
+      </a>
+      <header className="site-header">
+        <nav aria-label="Main navigation">
+          <Link to="/" className="site-title">
+            Ardiente feedback
+          </Link>
+          <div className="header-actions">
+            <button
+              type="button"
+              className="background-toggle"
+              onClick={() => setPaused(!paused)}
+              aria-label={paused ? "Play cloud animation" : "Pause cloud animation"}
+              title={paused ? "Play clouds" : "Pause clouds"}
+            >
+              {paused ? <Play size={17} /> : <Pause size={17} />}
+            </button>
+            <Link to="/admin" className="admin-link">
+              EXCO access
             </Link>
-            <div className="flex gap-6">
-              <Link
-                to="/"
-                className="hover:text-primary [&.active]:text-primary text-sm font-medium transition-colors"
-              >
-                Home
-              </Link>
-              <a
-                href="/api/scalar"
-                className="hover:text-primary text-sm font-medium transition-colors"
-              >
-                API Docs
-              </a>
-            </div>
-          </div>
-          <div className="hidden sm:block">
-            <span className="bg-muted text-muted-foreground rounded-full px-3 py-1 text-xs font-semibold">
-              TypeScript React Hono
-            </span>
           </div>
         </nav>
       </header>
-      <main className="w-full flex-1">
-        <div className="mx-auto max-w-7xl px-6 py-8">
-          <Outlet />
-        </div>
+      <main id="main-content">
+        <Outlet />
       </main>
-      {import.meta.env.DEV && <TanStackRouterDevtools />}
     </div>
-  ),
-  errorComponent: ({ error }) => (
-    <div className="flex min-h-screen flex-col items-center justify-center px-4 text-center">
-      <h1 className="text-destructive mb-4 text-4xl font-bold">Something went wrong</h1>
-      <p className="text-muted-foreground mb-8 max-w-md">
-        {error instanceof Error ? error.message : "An unexpected error occurred."}
-      </p>
-      <button
-        onClick={() => window.location.reload()}
-        className="bg-primary hover:bg-primary/90 rounded-lg px-6 py-2 font-medium text-white transition-colors"
-      >
+  );
+}
+export const Route = createRootRoute({
+  component: AppLayout,
+  errorComponent: () => (
+    <div className="status-card">
+      <h1>Something went wrong.</h1>
+      <p>Please reload and try again.</p>
+      <button className="primary-button" onClick={() => window.location.reload()}>
         Try again
       </button>
     </div>

@@ -6,6 +6,7 @@
   "scripts": {
     "start": "bun --env-file=.env scripts/start.mjs",
     "dev": "turbo dev",
+    "preview:form": "pnpm --filter @repo/web exec vite --host 127.0.0.1",
     "build": "turbo build",
     "lint": "oxlint .",
     "typecheck": "turbo typecheck && tsc -p tests/tsconfig.json",
@@ -24,7 +25,8 @@
     "services:up": "docker compose up -d --wait postgres maildev minio && docker compose run --rm minio_init",
     "services:down": "docker compose down",
     "services:test": "docker compose --profile test up -d --wait postgres_test",
-    "db:studio": "pnpm --filter=@repo/db studio"
+    "db:studio": "pnpm --filter=@repo/db studio",
+    "feedback:setup": "bun --env-file=.env apps/api/feedback-setup.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",

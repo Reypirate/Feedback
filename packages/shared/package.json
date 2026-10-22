@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./index.ts"
+    ".": "./index.ts",
+    "./feedback": "./feedback.ts",
+    "./feedback-results": "./feedback-results.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit --emitDeclarationOnly false -p tsconfig.json",
