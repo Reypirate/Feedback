@@ -47,8 +47,11 @@ async function requiredJourney(page: Page, instructor = false) {
         exact: true,
       })
       .fill("Clear demonstrations — browser test.");
+    page.once("dialog", (dialog) => void dialog.dismiss());
+    await page.getByRole("checkbox", { name: "Joy", exact: true }).click();
+    await expect(page.getByRole("checkbox", { name: "Joy", exact: true })).toBeChecked();
+    page.once("dialog", (dialog) => void dialog.accept());
     await page.getByRole("checkbox", { name: "Joy", exact: true }).uncheck();
-    await expect(page.getByText("Comments for deselected instructors were cleared.")).toBeVisible();
     await page.getByRole("checkbox", { name: "Joy", exact: true }).check();
     await expect(
       page.getByRole("textbox", {
@@ -82,7 +85,7 @@ test("a member submits with all written and instructor feedback skipped and sees
   await expect(
     page.getByRole("radio", { name: "Senior — Member for one year or more", exact: true }),
   ).toBeChecked();
-  await page.getByRole("button", { name: "Save & review" }).click();
+  await page.getByRole("button", { name: "Save", exact: true }).click();
   await page.getByRole("button", { name: "Submit feedback", exact: true }).click();
   await expect(
     page.getByText("Your response has been saved. You can safely close this tab."),

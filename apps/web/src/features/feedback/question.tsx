@@ -1,33 +1,64 @@
 ﻿import type { Answers, Question } from "@repo/shared/feedback";
+// ponytail: rating questions listed by id; move to a definition field if another survey needs it
+const scaleQuestions = new Set(["senior_class_interest", "pt_attendance", "pt_timing", "pt_value"]);
+const scalePoints = 5;
 type Props = {
   question: Question;
+  number: number;
   value: Answers[string] | undefined;
   onChange: (value: Answers[string]) => void;
   error?: string;
   disabled?: boolean;
 };
-export function QuestionField({ question: q, value, onChange, error, disabled }: Props) {
+export function QuestionField({ question: q, number, value, onChange, error, disabled }: Props) {
   const helpId = `${q.id}-help`;
   const errorId = `${q.id}-error`;
   const describedBy = [q.help && helpId, error && errorId].filter(Boolean).join(" ") || undefined;
-  const choices = (name: string, current: string | undefined, update: (value: string) => void) => (
-    <div className="choice-list">
-      {q.options?.map((o) => (
-        <label key={o.id} className={`choice ${current === o.id ? "is-selected" : ""}`}>
-          <input
-            type="radio"
-            name={name}
-            value={o.id}
-            checked={current === o.id}
-            onChange={() => update(o.id)}
-            disabled={disabled}
-            aria-describedby={describedBy}
-          />
-          <span>{o.label}</span>
-        </label>
-      ))}
-    </div>
+  const scale = q.type === "matrix" || scaleQuestions.has(q.id);
+  const radio = (
+    o: { id: string; label: string },
+    name: string,
+    current: string | undefined,
+    update: (value: string) => void,
+    className: string,
+  ) => (
+    <label key={o.id} className={`${className} ${current === o.id ? "is-selected" : ""}`}>
+      <input
+        type="radio"
+        name={name}
+        value={o.id}
+        checked={current === o.id}
+        onChange={() => update(o.id)}
+        disabled={disabled}
+        aria-describedby={describedBy}
+      />
+      <span>{o.label}</span>
+    </label>
   );
+  const choices = (name: string, current: string | undefined, update: (value: string) => void) => {
+    const options = q.options ?? [];
+    if (!scale)
+      return (
+        <div className="choice-list">
+          {options.map((o) => radio(o, name, current, update, "choice"))}
+        </div>
+      );
+    const extra = options.slice(scalePoints);
+    return (
+      <>
+        <div className="scale">
+          {options
+            .slice(0, scalePoints)
+            .map((o) => radio(o, name, current, update, "scale-option"))}
+        </div>
+        {extra.length > 0 && (
+          <div className="choice-list scale-extra">
+            {extra.map((o) => radio(o, name, current, update, "choice"))}
+          </div>
+        )}
+      </>
+    );
+  };
   return (
     <fieldset
       className={`question ${error ? "has-error" : ""}`}
@@ -36,7 +67,7 @@ export function QuestionField({ question: q, value, onChange, error, disabled }:
       aria-invalid={Boolean(error)}
     >
       <legend>
-        <span className="question-number">{q.number.toString().padStart(2, "0")}</span>
+        <span className="question-number">{number.toString().padStart(2, "0")}</span>
         <span>
           {q.label}
           <span className="field-tag">{q.required ? "Required" : "Optional"}</span>
