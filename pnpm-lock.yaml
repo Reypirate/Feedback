@@ -241,7 +241,7 @@ importers:
         specifier: workspace:*
         version: link:../../packages/shared
       '@tanstack/react-query':
-        specifier: ^5.104.4
+        specifier: ^5.104.5
         version: 5.104.5(@types/react@19.2.14)(react@19.1.0)
       '@tanstack/react-router':
         specifier: ^1.170.45
@@ -314,7 +314,7 @@ importers:
         specifier: ^4.3.3
         version: 4.3.3(vite@8.3.4(@types/node@22.20.5)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))
       '@tanstack/react-query-devtools':
-        specifier: ^5.104.4
+        specifier: ^5.104.5
         version: 5.104.5(@tanstack/react-query@5.104.5(@types/react@19.2.14)(react@19.1.0))(@types/react@19.2.14)(csstype@3.2.3)(react@19.1.0)
       '@tanstack/router-devtools':
         specifier: ^1.167.2
