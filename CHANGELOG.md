@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.2.0](https://github.com/Reypirate/Feedback/compare/v0.1.2...v0.2.0) (2026-10-23)
+
+
+### Features
+
+* add Ardiente feedback survey with Supabase ([4c03d25](https://github.com/Reypirate/Feedback/commit/4c03d2514428be9964c80b4e05943b4470bfc9f5))
+
+
+### Bug Fixes
+
+* align React Query dependencies and integrate reviewed updates ([5ae30fe](https://github.com/Reypirate/Feedback/commit/5ae30fe840359aef2e7746253bc1400486f6e067))
+* improve feedback form usability ([c30ba64](https://github.com/Reypirate/Feedback/commit/c30ba647282e9211642ffa5743beb1ab05a5eeaf))
+* improve feedback form usability ([58e1348](https://github.com/Reypirate/Feedback/commit/58e1348f01aefa448b23d5a020c1c84f4c590d97))
+* keep mobile rating options within their grid across fonts ([43006ca](https://github.com/Reypirate/Feedback/commit/43006ca71d217ee6502a6017008cf38fc29b60a1))
+* preserve compatible React Query versions after dependency refresh ([f0c5cac](https://github.com/Reypirate/Feedback/commit/f0c5cac033ee3529fdb218f739824d3e1e8eb538))
+* resolve feedback review and narrow-screen usability issues ([8474a17](https://github.com/Reypirate/Feedback/commit/8474a17eee34f6b44e0200b188c8bc77ccd41c1b))
+
 ## [0.1.2](https://github.com/Reypirate/TypeScript-React-Hono-Template/compare/v0.1.1...v0.1.2) (2026-10-20)
 
 
