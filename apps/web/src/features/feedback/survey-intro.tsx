@@ -1,6 +1,6 @@
 ﻿import type { Definition } from "@repo/shared/feedback";
 
-import { ArrowRight, Check } from "lucide-react";
+import { ArrowRight, Check, ListChecks } from "lucide-react";
 
 export function SurveyIntro({
   definition,
@@ -22,6 +22,7 @@ export function SurveyIntro({
         classes.
       </p>
       <div className="intro-info">
+        <p>Takes about 5 minutes, longer if you write comments.</p>
         <p>No name or email required.</p>
         <p>All written responses and instructor feedback are optional.</p>
       </div>
@@ -41,24 +42,35 @@ export function SurveyIntro({
   );
 }
 
-export function SurveySidebar({ definition, step }: { definition: Definition; step: number }) {
+type Progress = { definition: Definition; step: number; reached: number };
+
+export function SectionList({ definition, step, reached }: Progress) {
   return (
-    <aside className="form-sidebar">
-      <p className="term-label">{definition.term}</p>
-      <ol className="section-nav" aria-label="Survey sections">
-        {definition.sections.map((section, index) => (
-          <li
-            key={section.title}
-            className={step === index ? "current" : step > index ? "visited" : ""}
-          >
-            <span>{step > index ? <Check size={15} /> : index + 1}</span>
+    <ol className="section-nav" aria-label="Survey sections">
+      {definition.sections.map((section, index) => {
+        const done = step !== index && reached > index;
+        return (
+          <li key={section.title} className={step === index ? "current" : done ? "visited" : ""}>
+            <span>{done ? <Check size={15} /> : index + 1}</span>
             {section.title}
           </li>
-        ))}
-        <li className={step === 6 ? "current" : ""}>
-          <span>7</span>Review
-        </li>
-      </ol>
+        );
+      })}
+      <li className={step === 6 ? "current" : ""}>
+        <span>
+          <ListChecks size={14} aria-hidden />
+        </span>
+        Review
+      </li>
+    </ol>
+  );
+}
+
+export function SurveySidebar(props: Progress) {
+  return (
+    <aside className="form-sidebar">
+      <p className="term-label">{props.definition.term}</p>
+      <SectionList {...props} />
     </aside>
   );
 }
