@@ -1,4 +1,10 @@
-﻿import type { Answers, FieldErrors, PublicSurvey, Submission } from "@repo/shared/feedback";
+﻿import type {
+  Answers,
+  FieldErrors,
+  PublicSurvey,
+  Question,
+  Submission,
+} from "@repo/shared/feedback";
 
 import {
   answerLabel,
@@ -9,13 +15,18 @@ import {
 } from "@repo/shared/feedback";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useBlocker } from "@tanstack/react-router";
-import { ArrowLeft, ArrowRight, MoveUpRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, ChevronDown, Pencil } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 
 import { FeedbackApiError, feedbackRequest, jsonPost } from "./api";
 import { QuestionField } from "./question";
-import { SurveyIntro, SurveySidebar } from "./survey-intro";
+import { SectionList, SurveyIntro, SurveySidebar } from "./survey-intro";
+
+const isBlank = (value: unknown) =>
+  value === undefined ||
+  (typeof value === "string" && !value.trim()) ||
+  (Array.isArray(value) && !value.length);
 
 export function FeedbackPage({ slug = "ardiente" }: { slug?: string }) {
   const survey = useQuery({
@@ -70,6 +81,8 @@ export function SurveyForm({
 }) {
   const definition = survey.definition;
   const [step, setStep] = useState(-1);
+  const [reached, setReached] = useState(0);
+  if (step > reached) setReached(step);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [notice, setNotice] = useState("");
   const [failure, setFailure] = useState("");
@@ -111,8 +124,14 @@ export function SurveyForm({
   }
   function changeInstructors(next: string[]) {
     const visible = visibleAnswers(definition, answers, next);
-    if (Object.keys(answers).some((key) => !(key in visible)))
-      setNotice("Comments for deselected instructors were cleared.");
+    const losesText = Object.entries(answers).some(
+      ([key, value]) => !(key in visible) && !isBlank(value),
+    );
+    if (
+      losesText &&
+      !window.confirm("Remove this instructor? The comments you wrote for them will be deleted.")
+    )
+      return;
     form.setValue("selected", next);
     form.setValue("answers", visible);
   }
@@ -186,20 +205,48 @@ export function SurveyForm({
       </div>
     );
   if (step === -1) return <SurveyIntro definition={definition} onStart={() => setStep(0)} />;
+  // Number only the questions on screen; follow-ups that share a number keep sharing it.
+  const numbers = new Map<string, number>();
+  let shown = 0;
+  let last = 0;
+  for (const q of definition.questions)
+    if (isVisible(q, answers, selected)) {
+      if (q.number !== last) shown++;
+      last = q.number;
+      numbers.set(q.id, shown);
+    }
+  const stepLabel =
+    step === 6 ? "Review" : `${editing ? "Editing section" : "Section"} ${step + 1} of 6`;
+  const renderQuestion = (q: Question) => (
+    <QuestionField
+      key={q.id}
+      question={q}
+      number={numbers.get(q.id) ?? q.number}
+      value={answers[q.id]}
+      error={errors[q.id]}
+      onChange={(value) => changeAnswer(q.id, value)}
+    />
+  );
+  const stepQuestions = definition.questions.filter(
+    (q) => q.section === step && isVisible(q, answers, selected),
+  );
   return (
     <div className="form-layout">
-      <SurveySidebar definition={definition} step={step} />
+      <SurveySidebar definition={definition} step={step} reached={reached} />
       <div className="form-panel">
         <div className="step-meta">
-          <span>{step < 6 ? `Step ${step + 1} of 6` : "Review"}</span>
-          <span>{step < 6 ? `${Math.round((step / 6) * 100)}% complete` : ""}</span>
+          <span className="step-label">{stepLabel}</span>
+          <details className="section-jump">
+            <summary>
+              {stepLabel} <ChevronDown size={14} aria-hidden />
+            </summary>
+            <SectionList definition={definition} step={step} reached={reached} />
+          </details>
+          <span>
+            {step === 6 ? "All sections done" : `${Math.round((reached / 6) * 100)}% complete`}
+          </span>
         </div>
-        <progress
-          className="progress-track"
-          aria-label="Survey progress"
-          max={6}
-          value={Math.min(step, 6)}
-        />
+        <progress className="progress-track" aria-label="Survey progress" max={6} value={reached} />
         <h1 ref={heading} tabIndex={-1} className="section-title">
           {step < 6 ? definition.sections[step]?.title : "Review your answers"}
         </h1>
@@ -214,26 +261,28 @@ export function SurveyForm({
           <div className="error-summary" role="alert" ref={errorSummary} tabIndex={-1}>
             <strong>Please check the questions below.</strong>
             <ul>
-              {Object.entries(errors).map(([id, message]) => (
-                <li key={id}>
-                  <button
-                    className="text-button"
-                    onClick={() => {
-                      const q = definition.questions.find((q) => q.id === id);
-                      if (q && step !== q.section) {
-                        setStep(q.section);
-                        setEditing(true);
-                      } else
-                        document
-                          .getElementById(`question-${id}`)
-                          ?.querySelector<HTMLInputElement>("input, textarea")
-                          ?.focus();
-                    }}
-                  >
-                    {message}
-                  </button>
-                </li>
-              ))}
+              {Object.entries(errors).map(([id, message]) => {
+                const q = definition.questions.find((item) => item.id === id);
+                return (
+                  <li key={id}>
+                    <button
+                      className="text-button"
+                      onClick={() => {
+                        if (q && step !== q.section) {
+                          setStep(q.section);
+                          setEditing(true);
+                        } else
+                          document
+                            .getElementById(`question-${id}`)
+                            ?.querySelector<HTMLInputElement>("input, textarea")
+                            ?.focus();
+                      }}
+                    >
+                      {q ? `Question ${numbers.get(q.id) ?? q.number}: ${message}` : message}
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           </div>
         )}
@@ -277,61 +326,72 @@ export function SurveyForm({
                     </label>
                   ))}
                 </div>
-                <button
-                  type="button"
-                  className="text-button"
-                  onClick={() => {
-                    changeInstructors([]);
-                    setStep(5);
-                  }}
-                >
-                  Skip instructor feedback <ArrowRight size={14} />
-                </button>
+                {!selected.length && (
+                  <button type="button" className="text-button" onClick={() => setStep(5)}>
+                    Skip instructor feedback <ArrowRight size={14} />
+                  </button>
+                )}
               </div>
             )}
-            {step < 6 &&
-              definition.questions
-                .filter((q) => q.section === step && isVisible(q, answers, selected))
-                .map((q) => (
-                  <QuestionField
-                    key={q.id}
-                    question={q}
-                    value={answers[q.id]}
-                    error={errors[q.id]}
-                    onChange={(value) => changeAnswer(q.id, value)}
-                  />
+            {step < 6 && stepQuestions.filter((q) => !q.instructor).map(renderQuestion)}
+            {step === 4 &&
+              definition.instructors
+                .filter((i) => selected.includes(i.id))
+                .map((i) => (
+                  <section className="instructor-group" key={i.id}>
+                    <h2>{i.label}</h2>
+                    {stepQuestions.filter((q) => q.instructor === i.id).map(renderQuestion)}
+                  </section>
                 ))}
             {step === 6 &&
-              definition.sections.map((section, index) => (
-                <section className="review-section" key={section.title}>
-                  <div className="review-heading">
-                    <h2>{section.title}</h2>
-                    <button
-                      type="button"
-                      className="text-button"
-                      aria-label={`Edit ${section.title}`}
-                      onClick={() => {
-                        setStep(index);
-                        setEditing(true);
-                      }}
-                    >
-                      Edit <MoveUpRight size={13} />
-                    </button>
-                  </div>
-                  {index === 4 && !selected.length ? (
-                    <p className="subtle">Skipped</p>
-                  ) : (
-                    definition.questions
-                      .filter((q) => q.section === index && isVisible(q, answers, selected))
-                      .map((q) => (
-                        <div className="review-answer" key={q.id}>
-                          <h3>{q.label}</h3>
-                          <p>{answerLabel(q, answers[q.id])}</p>
-                        </div>
-                      ))
-                  )}
-                </section>
-              ))}
+              definition.sections.map((section, index) => {
+                const questions = definition.questions.filter(
+                  (q) => q.section === index && isVisible(q, answers, selected),
+                );
+                const answered = questions.filter((q) => !isBlank(answers[q.id]));
+                const missingRequired = questions.filter(
+                  (q) => q.required && isBlank(answers[q.id]),
+                );
+                const skipped = questions.filter(
+                  (q) => !q.required && isBlank(answers[q.id]),
+                ).length;
+                return (
+                  <section className="review-section" key={section.title}>
+                    <div className="review-heading">
+                      <h2>{section.title}</h2>
+                      <button
+                        type="button"
+                        className="text-button"
+                        aria-label={`Edit ${section.title}`}
+                        onClick={() => {
+                          setStep(index);
+                          setEditing(true);
+                        }}
+                      >
+                        <Pencil size={13} /> Edit
+                      </button>
+                    </div>
+                    {answered.map((q) => (
+                      <div className="review-answer" key={q.id}>
+                        <h3>{q.label}</h3>
+                        <p>{answerLabel(q, answers[q.id])}</p>
+                      </div>
+                    ))}
+                    {missingRequired.map((q) => (
+                      <div className="review-answer" key={q.id}>
+                        <h3>{q.label}</h3>
+                        <p className="field-error">Required answer missing</p>
+                      </div>
+                    ))}
+                    {questions.length === 0 && <p className="subtle">Skipped</p>}
+                    {skipped > 0 && (
+                      <p className="subtle">
+                        {skipped} optional {skipped === 1 ? "question" : "questions"} skipped
+                      </p>
+                    )}
+                  </section>
+                );
+              })}
           </fieldset>
           {failure && (
             <div className="error-summary" role="alert">
@@ -376,7 +436,7 @@ export function SurveyForm({
               }}
             >
               <ArrowLeft size={16} />
-              {editing ? "Back to review" : "Back"}
+              Back
             </button>
             <button
               type="submit"
@@ -385,7 +445,7 @@ export function SurveyForm({
             >
               {step < 6
                 ? editing
-                  ? "Save & review"
+                  ? "Save"
                   : step === 5
                     ? "Review answers"
                     : "Continue"

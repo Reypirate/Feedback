@@ -24,9 +24,10 @@ function AppLayout() {
               className="background-toggle"
               onClick={() => setPaused(!paused)}
               aria-label={paused ? "Play cloud animation" : "Pause cloud animation"}
-              title={paused ? "Play clouds" : "Pause clouds"}
+              title={paused ? "Play cloud animation" : "Pause cloud animation"}
             >
-              {paused ? <Play size={17} /> : <Pause size={17} />}
+              {paused ? <Play size={15} /> : <Pause size={15} />}
+              <span aria-hidden>{paused ? "Play" : "Pause"}</span>
             </button>
             <Link to="/admin" className="admin-link">
               EXCO access

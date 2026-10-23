@@ -2,6 +2,24 @@ import type { Page } from "@playwright/test";
 
 import { expect, test } from "@playwright/test";
 
+async function expectScalesFit(page: Page) {
+  const overflow = await page.locator(".scale").evaluateAll((scales) =>
+    scales.flatMap((scale) => {
+      const bounds = scale.getBoundingClientRect();
+      return [...scale.querySelectorAll("label")]
+        .filter((option) => {
+          const rect = option.getBoundingClientRect();
+          return rect.right > bounds.right + 1 || rect.left < bounds.left - 1;
+        })
+        .map((option) => option.textContent);
+    }),
+  );
+  expect(overflow).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+}
+
 async function requiredJourney(page: Page, instructor = false) {
   await page.goto("/");
   await expect(
@@ -18,6 +36,8 @@ async function requiredJourney(page: Page, instructor = false) {
     .getByRole("radio", { name: "Senior — Member for one year or more", exact: true })
     .check();
   await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Training schedule", exact: true })).toBeVisible();
+  await expectScalesFit(page);
   const fit = page.locator("#question-schedule_fit");
   for (const row of await fit.getByRole("group").all())
     await row.getByRole("radio", { name: "Very well", exact: true }).check();
@@ -29,10 +49,14 @@ async function requiredJourney(page: Page, instructor = false) {
     .getByRole("radio", { name: "It would depend on my timetable for that semester", exact: true })
     .check();
   await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Senior classes", exact: true })).toBeVisible();
+  await expectScalesFit(page);
   await page
     .getByRole("radio", { name: "Not applicable to me at this stage", exact: true })
     .check();
   await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Wednesday PT", exact: true })).toBeVisible();
+  await expectScalesFit(page);
   await page.getByRole("radio", { name: "Often", exact: true }).check();
   await page.getByRole("radio", { name: "Very useful", exact: true }).check();
   await page.getByRole("radio", { name: "I have not attended PT", exact: true }).check();
@@ -47,8 +71,11 @@ async function requiredJourney(page: Page, instructor = false) {
         exact: true,
       })
       .fill("Clear demonstrations — browser test.");
+    page.once("dialog", (dialog) => void dialog.dismiss());
+    await page.getByRole("checkbox", { name: "Joy", exact: true }).click();
+    await expect(page.getByRole("checkbox", { name: "Joy", exact: true })).toBeChecked();
+    page.once("dialog", (dialog) => void dialog.accept());
     await page.getByRole("checkbox", { name: "Joy", exact: true }).uncheck();
-    await expect(page.getByText("Comments for deselected instructors were cleared.")).toBeVisible();
     await page.getByRole("checkbox", { name: "Joy", exact: true }).check();
     await expect(
       page.getByRole("textbox", {
@@ -82,7 +109,7 @@ test("a member submits with all written and instructor feedback skipped and sees
   await expect(
     page.getByRole("radio", { name: "Senior — Member for one year or more", exact: true }),
   ).toBeChecked();
-  await page.getByRole("button", { name: "Save & review" }).click();
+  await page.getByRole("button", { name: "Save", exact: true }).click();
   await page.getByRole("button", { name: "Submit feedback", exact: true }).click();
   await expect(
     page.getByText("Your response has been saved. You can safely close this tab."),
@@ -204,4 +231,43 @@ test("the cloud background can be paused and supports reduced motion", async ({ 
     page.getByRole("button", { name: "Play cloud animation", exact: true }),
   ).toBeVisible();
   await page.screenshot({ path: "test-results/ardiente-cloud-preview.png", fullPage: true });
+});
+
+test("rating controls stay inside the form on small phones", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 844 });
+  await requiredJourney(page);
+});
+
+test("review identifies required PT answers and counts only skipped optional questions", async ({
+  page,
+}) => {
+  await requiredJourney(page);
+  const exco = page
+    .locator(".review-section")
+    .filter({ has: page.getByRole("heading", { name: "17th EXCO", exact: true }) });
+  await expect(exco).toContainText("3 optional questions skipped");
+  await page.getByRole("button", { name: "Edit Wednesday PT", exact: true }).click();
+  await page
+    .locator("#question-pt_attendance")
+    .getByRole("radio", { name: "Often", exact: true })
+    .check();
+  await page.getByRole("button", { name: "Back", exact: true }).click();
+  const pt = page
+    .locator(".review-section")
+    .filter({ has: page.getByRole("heading", { name: "Wednesday PT", exact: true }) });
+  await expect(pt).toContainText(
+    "How useful have the PT sessions been in supporting your dance training?",
+  );
+  await expect(pt).toContainText("Required answer missing");
+  await expect(pt).toContainText("1 optional question skipped");
+  await page.getByRole("button", { name: "Submit feedback", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("Please answer this question.");
+  await page.getByRole("button", { name: "Edit Wednesday PT", exact: true }).click();
+  await page
+    .locator("#question-pt_value")
+    .getByRole("radio", { name: "Very useful", exact: true })
+    .check();
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(pt).not.toContainText("Required answer missing");
+  await expect(pt).toContainText("Very useful");
 });
