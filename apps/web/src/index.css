@@ -1045,6 +1045,17 @@ textarea::placeholder {
     padding: 18px;
   }
 }
+@media (max-width: 350px) {
+  .scale {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .scale-option {
+    min-width: 0;
+    min-height: 48px;
+    font-size: 12px;
+    overflow-wrap: anywhere;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

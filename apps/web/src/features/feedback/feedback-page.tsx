@@ -349,7 +349,12 @@ export function SurveyForm({
                   (q) => q.section === index && isVisible(q, answers, selected),
                 );
                 const answered = questions.filter((q) => !isBlank(answers[q.id]));
-                const skipped = questions.length - answered.length;
+                const missingRequired = questions.filter(
+                  (q) => q.required && isBlank(answers[q.id]),
+                );
+                const skipped = questions.filter(
+                  (q) => !q.required && isBlank(answers[q.id]),
+                ).length;
                 return (
                   <section className="review-section" key={section.title}>
                     <div className="review-heading">
@@ -372,8 +377,14 @@ export function SurveyForm({
                         <p>{answerLabel(q, answers[q.id])}</p>
                       </div>
                     ))}
-                    {answered.length === 0 && <p className="subtle">Skipped</p>}
-                    {answered.length > 0 && skipped > 0 && (
+                    {missingRequired.map((q) => (
+                      <div className="review-answer" key={q.id}>
+                        <h3>{q.label}</h3>
+                        <p className="field-error">Required answer missing</p>
+                      </div>
+                    ))}
+                    {questions.length === 0 && <p className="subtle">Skipped</p>}
+                    {skipped > 0 && (
                       <p className="subtle">
                         {skipped} optional {skipped === 1 ? "question" : "questions"} skipped
                       </p>
