@@ -17,10 +17,6 @@ export function SurveyIntro({
         Tell us what’s working and what could improve — from training times and PT to instructors
         and the {definition.exco}th EXCO.
       </p>
-      <p className="intro-description">
-        We’re also asking about moving one Wednesday session to Tuesday and interest in senior
-        classes.
-      </p>
       <div className="intro-info">
         <p>Takes about 5 minutes, longer if you write comments.</p>
         <p>No name or email required.</p>
@@ -42,25 +38,45 @@ export function SurveyIntro({
   );
 }
 
-type Progress = { definition: Definition; step: number; reached: number };
+type Progress = {
+  definition: Definition;
+  step: number;
+  reached: number;
+  onNavigate: (step: number) => void;
+  disabled: boolean;
+};
 
-export function SectionList({ definition, step, reached }: Progress) {
+export function SectionList({ definition, step, reached, onNavigate, disabled }: Progress) {
   return (
     <ol className="section-nav" aria-label="Survey sections">
       {definition.sections.map((section, index) => {
         const done = step !== index && reached > index;
         return (
           <li key={section.title} className={step === index ? "current" : done ? "visited" : ""}>
-            <span>{done ? <Check size={15} /> : index + 1}</span>
-            {section.title}
+            <button
+              type="button"
+              disabled={disabled || index > reached}
+              aria-current={step === index ? "step" : undefined}
+              onClick={() => onNavigate(index)}
+            >
+              <span aria-hidden>{done ? <Check size={15} /> : index + 1}</span>
+              {section.title}
+            </button>
           </li>
         );
       })}
       <li className={step === 6 ? "current" : ""}>
-        <span>
-          <ListChecks size={14} aria-hidden />
-        </span>
-        Review
+        <button
+          type="button"
+          disabled={disabled || reached < 6}
+          aria-current={step === 6 ? "step" : undefined}
+          onClick={() => onNavigate(6)}
+        >
+          <span aria-hidden>
+            <ListChecks size={14} />
+          </span>
+          Review
+        </button>
       </li>
     </ol>
   );

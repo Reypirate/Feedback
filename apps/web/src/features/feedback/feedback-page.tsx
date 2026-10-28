@@ -15,7 +15,7 @@ import {
 } from "@repo/shared/feedback";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useBlocker } from "@tanstack/react-router";
-import { ArrowLeft, ArrowRight, ChevronDown, Pencil } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, ChevronDown, Pencil } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 
@@ -93,6 +93,7 @@ export function SurveyForm({
   const [needsReload, setNeedsReload] = useState(false);
   const heading = useRef<HTMLHeadingElement>(null);
   const errorSummary = useRef<HTMLDivElement>(null);
+  const sectionMenu = useRef<HTMLDetailsElement>(null);
   const pending = useRef<Submission | null>(null);
   const inFlight = useRef(false);
   const form = useForm<{ answers: Answers; selected: string[] }>({
@@ -191,6 +192,14 @@ export function SurveyForm({
       setSending(false);
     }
   }
+  function navigateSection(index: number) {
+    if (sending || uncertain || index > reached || index === step) return;
+    setErrors({});
+    setNotice("");
+    setStep(index);
+    setEditing(reached === 6 && index < 6);
+    if (sectionMenu.current) sectionMenu.current.open = false;
+  }
   if (receipt)
     return (
       <div className="success-card">
@@ -230,17 +239,27 @@ export function SurveyForm({
   const stepQuestions = definition.questions.filter(
     (q) => q.section === step && isVisible(q, answers, selected),
   );
+  const requiredQuestions = stepQuestions.filter((q) => q.required);
+  const stepValidation = validateAnswers(definition, answers, selected, step);
+  const completedRequired = requiredQuestions.filter((q) => !stepValidation.errors[q.id]).length;
+  const navigation = {
+    definition,
+    step,
+    reached,
+    onNavigate: navigateSection,
+    disabled: sending || uncertain,
+  };
   return (
     <div className="form-layout">
-      <SurveySidebar definition={definition} step={step} reached={reached} />
+      <SurveySidebar {...navigation} />
       <div className="form-panel">
         <div className="step-meta">
           <span className="step-label">{stepLabel}</span>
-          <details className="section-jump">
-            <summary>
+          <details className="section-jump" ref={sectionMenu}>
+            <summary aria-label="Choose section">
               {stepLabel} <ChevronDown size={14} aria-hidden />
             </summary>
-            <SectionList definition={definition} step={step} reached={reached} />
+            <SectionList {...navigation} />
           </details>
           <span>
             {step === 6 ? "All sections done" : `${Math.round((reached / 6) * 100)}% complete`}
@@ -256,6 +275,24 @@ export function SurveyForm({
               ? definition.sections[step]?.description
               : "Check your answers before submitting."}
           </p>
+        )}
+        {requiredQuestions.length > 0 && (
+          <div
+            className={`answer-progress ${completedRequired === requiredQuestions.length ? "is-complete" : ""}`}
+          >
+            <div>
+              <span>Required questions</span>
+              <output>
+                {completedRequired === requiredQuestions.length && <Check size={14} aria-hidden />}
+                {completedRequired} of {requiredQuestions.length} answered
+              </output>
+            </div>
+            <progress
+              aria-label="Required answers in this section"
+              max={requiredQuestions.length}
+              value={completedRequired}
+            />
+          </div>
         )}
         {Object.keys(errors).length > 0 && (
           <div className="error-summary" role="alert" ref={errorSummary} tabIndex={-1}>

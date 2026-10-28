@@ -1,4 +1,8 @@
 ﻿import type { Answers, Question } from "@repo/shared/feedback";
+
+import { Check } from "lucide-react";
+import { useLayoutEffect, useRef } from "react";
+
 // ponytail: rating questions listed by id; move to a definition field if another survey needs it
 const scaleQuestions = new Set(["senior_class_interest", "pt_attendance", "pt_timing", "pt_value"]);
 const scalePoints = 5;
@@ -11,6 +15,12 @@ type Props = {
   disabled?: boolean;
 };
 export function QuestionField({ question: q, number, value, onChange, error, disabled }: Props) {
+  const textarea = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    if (typeof value !== "string" || !textarea.current) return;
+    textarea.current.style.height = "auto";
+    textarea.current.style.height = `${Math.min(textarea.current.scrollHeight + 2, 360)}px`;
+  }, [value]);
   const helpId = `${q.id}-help`;
   const errorId = `${q.id}-error`;
   const describedBy = [q.help && helpId, error && errorId].filter(Boolean).join(" ") || undefined;
@@ -33,6 +43,9 @@ export function QuestionField({ question: q, number, value, onChange, error, dis
         aria-describedby={describedBy}
       />
       <span>{o.label}</span>
+      {className === "scale-option" && current === o.id && (
+        <Check className="selection-check" size={12} aria-hidden />
+      )}
     </label>
   );
   const choices = (name: string, current: string | undefined, update: (value: string) => void) => {
@@ -112,6 +125,7 @@ export function QuestionField({ question: q, number, value, onChange, error, dis
             {q.label}
           </label>
           <textarea
+            ref={textarea}
             id={q.id}
             value={typeof value === "string" ? value : ""}
             maxLength={2000}
