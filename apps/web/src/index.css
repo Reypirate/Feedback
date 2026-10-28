@@ -293,14 +293,24 @@ button:disabled {
   gap: 8px;
 }
 .section-nav li {
-  min-height: 38px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
   font-size: 13px;
   color: #52647d;
 }
-.section-nav li > span {
+.section-nav button {
+  width: 100%;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px;
+  border-radius: 8px;
+  text-align: left;
+  transition: background-color 150ms;
+}
+.section-nav button:not(:disabled):hover {
+  background: #edf4ff;
+}
+.section-nav button > span {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -315,11 +325,11 @@ button:disabled {
   color: #164da7;
   font-weight: 650;
 }
-.section-nav .current > span {
+.section-nav .current button > span {
   color: #fff;
   background: #205bc2;
 }
-.section-nav .visited > span {
+.section-nav .visited button > span {
   background: #e4f0ff;
   color: #205bc2;
 }
@@ -367,6 +377,48 @@ button:disabled {
   font-size: 14px;
   line-height: 1.8;
   margin-bottom: 28px;
+}
+.answer-progress {
+  margin: 20px 0 28px;
+  color: #52647d;
+  font-size: 12px;
+}
+.answer-progress > div,
+.answer-progress output {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.answer-progress > div {
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+.answer-progress.is-complete output {
+  color: #164da7;
+  font-weight: 600;
+}
+.answer-progress progress {
+  display: block;
+  width: 100%;
+  height: 3px;
+  margin-top: 9px;
+  appearance: none;
+  border: 0;
+  border-radius: 3px;
+  background: #e5edf7;
+}
+.answer-progress progress::-webkit-progress-bar {
+  border-radius: 3px;
+  background: #e5edf7;
+}
+.answer-progress progress::-webkit-progress-value {
+  border-radius: 3px;
+  background: #5289dc;
+  transition: width 180ms ease-out;
+}
+.answer-progress progress::-moz-progress-bar {
+  border-radius: 3px;
+  background: #5289dc;
 }
 .form-fields,
 .question,
@@ -429,6 +481,9 @@ button:disabled {
   font-size: 14px;
   line-height: 1.65;
   cursor: pointer;
+  transition:
+    background-color 150ms,
+    border-color 150ms;
 }
 .choice:hover {
   border-color: #8caee1;
@@ -500,7 +555,7 @@ textarea::placeholder {
   align-items: center;
   justify-content: center;
   min-height: 52px;
-  padding: 8px 6px;
+  padding: 21px 6px 9px;
   background: #fff;
   border: 1px solid #d5dfeb;
   border-radius: 8px;
@@ -508,6 +563,16 @@ textarea::placeholder {
   line-height: 1.35;
   text-align: center;
   cursor: pointer;
+  transition:
+    background-color 150ms,
+    border-color 150ms,
+    box-shadow 150ms;
+}
+.selection-check {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  pointer-events: none;
 }
 .scale-option input {
   position: absolute;
@@ -526,6 +591,7 @@ textarea::placeholder {
   border-color: #205bc2;
   color: #fff;
   font-weight: 600;
+  box-shadow: 0 2px 5px rgb(32 91 194 / 18%);
 }
 .scale-option:has(input:focus-visible) {
   outline: 2px solid #205bc2;
@@ -998,7 +1064,7 @@ textarea::placeholder {
   .scale-option {
     min-width: 0;
     min-height: 60px;
-    padding: 6px 2px;
+    padding: 20px 2px 7px;
     font-size: 11.5px;
     overflow-wrap: anywhere;
   }

@@ -238,6 +238,61 @@ test("rating controls stay inside the form on small phones", async ({ page }) =>
   await requiredJourney(page);
 });
 
+for (const width of [1280, 360]) {
+  test(`members can revisit sections and track their answers at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto("/preview");
+    await page.getByRole("button", { name: "Start form", exact: true }).click();
+    const progress = page.getByRole("progressbar", { name: "Required answers in this section" });
+    await expect(progress).toHaveAttribute("value", "0");
+    await page.getByRole("radio", { name: "Alumni", exact: true }).check();
+    await expect(progress).toHaveAttribute("value", "1");
+    await expect(page.getByRole("status")).toContainText("1 of 1 answered");
+    await page.getByRole("button", { name: "Continue", exact: true }).click();
+    await expect(progress).toHaveAttribute("value", "0");
+    if (width < 741) await page.getByLabel("Choose section", { exact: true }).click();
+    await expect(page.getByRole("button", { name: "Senior classes", exact: true })).toBeDisabled();
+    await page.getByRole("button", { name: "About you", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "About you", exact: true })).toBeFocused();
+    await expect(page.getByRole("radio", { name: "Alumni", exact: true })).toBeChecked();
+    await expect(progress).toHaveAttribute("value", "1");
+    if (width < 741) await page.getByLabel("Choose section", { exact: true }).click();
+    await page.getByRole("button", { name: "Training schedule", exact: true }).click();
+    await expect(
+      page.getByRole("heading", { name: "Training schedule", exact: true }),
+    ).toBeFocused();
+    const fit = page.locator("#question-schedule_fit");
+    for (const row of await fit.getByRole("group").all())
+      await row.getByRole("radio", { name: "Very well", exact: true }).check();
+    await expect(progress).toHaveAttribute("value", "1");
+    await page.getByRole("button", { name: "Continue", exact: true }).click();
+    await expect(page.getByRole("alert")).toContainText("Please answer this question");
+    await expect(
+      page.getByRole("heading", { name: "Training schedule", exact: true }),
+    ).toBeVisible();
+    await expectScalesFit(page);
+    await page.screenshot({ path: `test-results/interactive-form-${width}.png`, fullPage: true });
+  });
+}
+
+test("long comments grow while typing and survive section navigation", async ({ page }) => {
+  await requiredJourney(page);
+  await page.getByRole("button", { name: "Edit 17th EXCO", exact: true }).click();
+  const comment = page.getByRole("textbox").first();
+  const before = await comment.evaluate((element) => element.getBoundingClientRect().height);
+  const answer = Array.from({ length: 18 }, (_, index) => `Feedback line ${index + 1}`).join("\n");
+  await comment.fill(answer);
+  await expect
+    .poll(() => comment.evaluate((element) => element.getBoundingClientRect().height))
+    .toBeGreaterThan(before);
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await page.getByRole("button", { name: "Edit 17th EXCO", exact: true }).click();
+  await expect(comment).toHaveValue(answer);
+  await expect
+    .poll(() => comment.evaluate((element) => element.getBoundingClientRect().height))
+    .toBeGreaterThan(before);
+});
+
 test("review identifies required PT answers and counts only skipped optional questions", async ({
   page,
 }) => {
