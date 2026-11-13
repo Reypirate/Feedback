@@ -22,6 +22,13 @@
       "when": 1792649197141,
       "tag": "0002_condemned_harpoon",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1794535964758,
+      "tag": "0003_feedback_function_search_path",
+      "breakpoints": true
     }
   ]
 }

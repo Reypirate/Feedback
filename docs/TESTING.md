@@ -67,8 +67,12 @@ server or load the user's `.env`; configuration and the auth secret are supplied
 
 Tests cover frontend rendering with real JavaScript/CSS assets, runtime configuration,
 direct deep links and not-found recovery, API JSON 404s, anonymous session refusal, OpenAPI,
-and the documentation HTML. The browser suite does not test login forms or dashboards:
-these UI features are not implemented in this starter.
+and the documentation HTML. Feedback tests also cover member submission and retry, EXCO
+dashboard filtering and CSV export, mobile layout and access denial. Dashboard sessions are
+seeded outside the production server; no password login or test login endpoint is enabled
+in the app under test. The Google button is checked through its provider redirect. Integration
+tests simulate Google's token endpoint to verify linking, verified email requirements,
+application audience checks, OAuth state and EXCO authorisation. These are not live Google tests.
 
 Use `pnpm exec playwright show-report` to inspect the HTML report. Failure traces and
 screenshots are kept in ignored `test-results/` and `playwright-report/` directories.

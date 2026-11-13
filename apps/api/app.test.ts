@@ -4,7 +4,7 @@ import { HTTPException } from "hono/http-exception";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
-import { createApp } from "./app";
+import { createApp } from "./app-factory";
 
 const env = {
   VITE_APP_URL: "http://localhost:4000",

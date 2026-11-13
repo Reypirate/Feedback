@@ -3,7 +3,7 @@ import type { StoredResponse } from "./feedback";
 import { describe, expect, it } from "vitest";
 
 import { createFeedbackDefinition } from "./feedback";
-import { csvCell, distribution, responsesCsv } from "./feedback-results";
+import { csvCell, distribution, readingCheck, responsesCsv } from "./feedback-results";
 const definition = createFeedbackDefinition();
 const responses: StoredResponse[] = [
   {
@@ -27,6 +27,29 @@ const responses: StoredResponse[] = [
   },
 ];
 describe("results", () => {
+  it("flags a reading mismatch without treating it as a rating and preserves identity in CSV", () => {
+    const response = {
+      ...responses[0],
+      answers: {
+        respondent_name: "Test Member",
+        telegram_username: "@member",
+        reading_note: " RHYTHM ",
+        data_consent: ["agree"],
+      },
+    };
+    expect(readingCheck(definition, response)).toBe("Reading check matched");
+    expect(readingCheck(definition, { ...response, answers: { reading_note: "other" } })).toBe(
+      "Reading check needs review",
+    );
+    const csv = responsesCsv(definition, [response]);
+    expect(csv).toContain("Test Member");
+    expect(csv).toContain("telegram_username");
+    const legacy = {
+      ...definition,
+      questions: definition.questions.filter((question) => !question.attentionAnswer),
+    };
+    expect(readingCheck(legacy, response)).toBeNull();
+  });
   it("preserves uncertain responses in the feasibility denominator", () => {
     const q = definition.questions.find((q) => q.id === "tuesday_feasibility")!;
     expect(

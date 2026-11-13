@@ -1,0 +1,10 @@
+.env
+.env.*
+.git
+data
+storage
+coverage
+test-results
+playwright-report
+apps/api/dist
+apps/web/dist

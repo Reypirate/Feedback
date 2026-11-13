@@ -6,8 +6,8 @@ and review the form, and disables final submission. It does not save responses. 
 failures display a readable message with a link to this preview instead of a JSON parser error.
 
 The public form is at `/` (the `ardiente` survey) or `/feedback/<slug>`. EXCO signs in at
-`/admin` or `/admin/feedback/<slug>`. The six sections cover all 25 survey questions,
-followed by review and submission. Every comment and all instructor feedback are optional.
+`/admin` or `/admin/feedback/<slug>`. The six sections are followed by review, consent and
+submission. Name and Telegram username are required. Written feedback and instructor comments are optional.
 The default term label is **Current semester**; change `SURVEY_TERM` before publishing.
 
 ## Supabase setup
@@ -15,15 +15,18 @@ The default term label is **Current semester**; change `SURVEY_TERM` before publ
 1. Create/select the intended Supabase project. Copy connection strings from its **Connect**
    panel. Use the pooled runtime string for `DATABASE_URL` and a direct or session-pooler
    string for `DATABASE_MIGRATION_URL`. URL-encode special characters in the password and
-   retain TLS (`sslmode=require`). See [Supabase's Drizzle guide](https://supabase.com/docs/guides/database/drizzle)
+   use `sslmode=verify-full&sslrootcert=ABSOLUTE_PATH_TO_CERTIFICATE`. The public CA is included
+   in `certs/supabase-root-2021.crt`; use forward slashes and URL-encode spaces in the path.
+   These are PostgreSQL URLs, not the HTTPS Project URL or a publishable API key.
+   See [Supabase's Drizzle guide](https://supabase.com/docs/guides/database/drizzle)
    and [connection guide](https://supabase.com/docs/guides/database/connecting-to-postgres).
 2. Run `pnpm install --frozen-lockfile`, then `Copy-Item .env.example .env` in PowerShell.
    Fill both connection strings and generate `BETTER_AUTH_SECRET` with
    `bun -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"`.
-3. Set `FEEDBACK_ADMIN_EMAIL` to the intended EXCO account and `FEEDBACK_ADMIN_PASSWORD`
-   to a unique password of at least 12 characters. This password is used only when creating
-   a new account. Existing accounts retain their password. Set `SURVEY_TERM` and optionally
-   `SURVEY_SLUG`. Leave SMTP settings empty if mail is not configured.
+3. Set `FEEDBACK_ADMIN_EMAIL` to the intended EXCO Google account. Set `GOOGLE_CLIENT_ID`
+   and `GOOGLE_CLIENT_SECRET` using [Google sign-in setup](GOOGLE-AUTH-SETUP.md). No EXCO
+   app password is needed. Set `SURVEY_TERM` and optionally `SURVEY_SLUG`. Leave SMTP
+   settings empty if mail is not configured.
 4. Review and apply migrations: `pnpm db:migrate`. Then run `pnpm feedback:setup` to
    explicitly provision that EXCO account and publish the first survey definition.
 5. Run `pnpm dev` and open http://localhost:4000. For production, set the public HTTPS app,
@@ -48,10 +51,13 @@ database triggers prevent changing or deleting a published snapshot. A closed su
 closed when a new version is published. EXCO can explicitly reopen it in the dashboard.
 Use a different `SURVEY_SLUG` for a separate collection round.
 
-Public signup never grants EXCO privileges. Trusted setup adds the selected account to
+Public signup and password sign-in are disabled outside isolated test mode. Trusted setup
+creates a passwordless user and adds the selected account to
 `feedback_admins`. Every results, export and lifecycle endpoint checks a server-verified
 Better Auth session and that table. Self-reported membership answers cannot grant permissions.
-Keep the setup password out of source control and remove it from the environment after setup.
+Google sign-in requires a verified matching email, the configured client audience and issuer,
+and an unexpired identity. The redirect flow uses OAuth state and PKCE. Raw ID-token sign-in
+is disabled. New Google users cannot self-register. Keep OAuth client secrets out of source control.
 
 The dashboard separates versions, filters Junior/Senior/Alumni, shows option counts and
 explicit denominators, and exports only the chosen scope. Checkbox percentages use answered
@@ -62,10 +68,20 @@ Authorised raw access and exports remain available; this suppression does not gu
 
 ## Submission and privacy
 
-The form collects no respondent name, email, account ID, IP address or user-agent in response
-rows. Existing signed-in identities are not attached. Members should avoid identifying details
-in comments. Hosting and authentication infrastructure may retain operational logs; the form
-does not promise complete anonymity or enforce one response per person.
+The current form collects a required name and Telegram username alongside the feedback.
+It explains this before collection and requires an affirmative consent checkbox at final
+review for feedback review, club improvements and follow-up. The saved definition version
+records the exact consent wording, and the saved answer records the affirmative choice.
+Consent questions are validated by the server as well as the browser. No respondent email,
+account ID, IP address or user-agent is stored in response rows. Signed-in account identities
+are not automatically attached. This form is identifiable. Earlier definition versions remain
+unchanged and do not gain identity fields retroactively. Hosting may retain operational logs.
+
+EXCO can open **Individual responses** to select a submission, view every answer and its
+receipt and timestamp, and move between responses. Existing version and membership filters
+apply. A short reading prompt is saved with the response; mismatches are flagged for human
+review and never silently excluded from results. Members can contact ardiente@sa.smu.edu.sg
+about their information or withdrawal of consent. This consent covers feedback, not newsletters.
 
 Drafts remain in memory in the current tab. There is no silent local-storage saving. Navigation
 warns before discarding answers. Back, review edits and branch changes retain visible answers;
@@ -96,6 +112,11 @@ solely as a connection for creating randomly named disposable databases. The tes
 up their own databases. Browser tests exercise the production bundle, an actual EXCO account,
 persisted submissions, a committed write with a lost response, mobile overflow, keyboard use,
 review edits and access denial. CI includes PostgreSQL for both suites.
+
+Google callback integration tests run the real auth handler against local simulated token
+responses. Browser tests seed signed sessions in an isolated database and verify the Google
+redirect without contacting Google. A real Google sign-in must still be checked after OAuth
+credentials and redirect URIs are configured.
 
 The local `skills/` directory is intentionally Git-ignored. It includes the completed
 `Form Build/SKILL.md` entry point, references updated for Supabase, and `agents/openai.yaml`.

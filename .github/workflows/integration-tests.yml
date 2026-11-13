@@ -1,16 +1,14 @@
 name: Integration Tests
 
 on:
-  push:
-    branches: [main]
-  pull_request:
+  workflow_call:
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: integration-tests-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:

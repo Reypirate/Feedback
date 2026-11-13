@@ -500,6 +500,7 @@ input[type="checkbox"] {
   flex-shrink: 0;
 }
 textarea,
+.short-answer,
 .login-card input,
 select {
   background: #fff;
@@ -508,6 +509,44 @@ select {
   padding: 12px;
   color: #182c47;
   font-size: 14px;
+}
+.short-answer {
+  width: 100%;
+  max-width: 560px;
+}
+.response-navigation {
+  display: grid;
+  gap: 16px;
+  margin: 24px 0;
+}
+.response-navigation label {
+  display: grid;
+  gap: 8px;
+}
+.response-navigation select {
+  width: 100%;
+  min-width: 0;
+}
+.response-paging {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.response-paging span {
+  font-size: 13px;
+}
+.response-receipt {
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  color: #65758a;
+}
+.individual-response .review-answer h4 {
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+.dashboard-tabs {
+  flex-wrap: wrap;
 }
 textarea {
   width: 100%;

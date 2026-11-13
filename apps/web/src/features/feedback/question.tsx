@@ -119,6 +119,27 @@ export function QuestionField({ question: q, number, value, onChange, error, dis
           })}
         </div>
       )}
+      {q.type === "text" && (
+        <>
+          <label className="sr-only" htmlFor={q.id}>
+            {q.label}
+          </label>
+          <input
+            id={q.id}
+            className="short-answer"
+            type="text"
+            value={typeof value === "string" ? value : ""}
+            maxLength={q.maxLength ?? 2000}
+            autoComplete={q.id === "respondent_name" ? "name" : "off"}
+            autoCapitalize={q.id === "respondent_name" ? "words" : "none"}
+            spellCheck={q.id === "respondent_name"}
+            placeholder={q.format === "telegram" ? "@yourusername" : undefined}
+            onChange={(event) => onChange(event.target.value)}
+            aria-describedby={describedBy}
+            aria-invalid={Boolean(error)}
+          />
+        </>
+      )}
       {q.type === "textarea" && (
         <>
           <label className="sr-only" htmlFor={q.id}>

@@ -2,6 +2,8 @@ import type { Page } from "@playwright/test";
 
 import { expect, test } from "@playwright/test";
 
+import { sessionCookie, useSession } from "./session";
+
 async function expectScalesFit(page: Page) {
   const overflow = await page.locator(".scale").evaluateAll((scales) =>
     scales.flatMap((scale) => {
@@ -32,8 +34,12 @@ async function requiredJourney(page: Page, instructor = false) {
     await page.screenshot({ path: "test-results/ardiente-mobile-form.png", fullPage: true });
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("Please answer this question");
+  await page.getByRole("textbox", { name: "Your name", exact: true }).fill("Browser Test Member");
   await page
-    .getByRole("radio", { name: "Senior — Member for one year or more", exact: true })
+    .getByRole("textbox", { name: "Telegram username", exact: true })
+    .fill("@browsertestmember");
+  await page
+    .getByRole("radio", { name: "Senior (Member for one year or more)", exact: true })
     .check();
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Training schedule", exact: true })).toBeVisible();
@@ -54,6 +60,7 @@ async function requiredJourney(page: Page, instructor = false) {
   await page
     .getByRole("radio", { name: "Not applicable to me at this stage", exact: true })
     .check();
+  await page.getByRole("textbox", { name: "Before the next section", exact: true }).fill("rhythm");
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Wednesday PT", exact: true })).toBeVisible();
   await expectScalesFit(page);
@@ -70,7 +77,7 @@ async function requiredJourney(page: Page, instructor = false) {
         name: "What has Joy done well, and what would you like Joy to continue doing?",
         exact: true,
       })
-      .fill("Clear demonstrations — browser test.");
+      .fill("Clear demonstrations: browser test.");
     page.once("dialog", (dialog) => void dialog.dismiss());
     await page.getByRole("checkbox", { name: "Joy", exact: true }).click();
     await expect(page.getByRole("checkbox", { name: "Joy", exact: true })).toBeChecked();
@@ -88,11 +95,12 @@ async function requiredJourney(page: Page, instructor = false) {
         name: "What has Joy done well, and what would you like Joy to continue doing?",
         exact: true,
       })
-      .fill("Clear demonstrations — browser test.");
+      .fill("Clear demonstrations: browser test.");
     await page.getByRole("button", { name: "Continue", exact: true }).click();
   } else await page.getByRole("button", { name: "Skip instructor feedback" }).click();
   await page.getByRole("button", { name: "Review answers" }).click();
   await expect(page.getByRole("heading", { name: "Review your answers" })).toBeVisible();
+  await page.locator("#question-data_consent input[type=checkbox]").check();
   await expect(
     page.getByText("How useful have the PT sessions been in supporting your dance training?", {
       exact: true,
@@ -107,9 +115,13 @@ test("a member submits with all written and instructor feedback skipped and sees
   await requiredJourney(page);
   await page.getByRole("button", { name: "Edit About you", exact: true }).click();
   await expect(
-    page.getByRole("radio", { name: "Senior — Member for one year or more", exact: true }),
+    page.getByRole("radio", { name: "Senior (Member for one year or more)", exact: true }),
   ).toBeChecked();
   await page.getByRole("button", { name: "Save", exact: true }).click();
+  await page.locator("#question-data_consent input[type=checkbox]").uncheck();
+  await page.getByRole("button", { name: "Submit feedback", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("Please answer this question");
+  await page.locator("#question-data_consent input[type=checkbox]").check();
   await page.getByRole("button", { name: "Submit feedback", exact: true }).click();
   await expect(
     page.getByText("Your response has been saved. You can safely close this tab."),
@@ -119,12 +131,9 @@ test("a member submits with all written and instructor feedback skipped and sees
   await expect(
     page.getByRole("heading", { name: "Ardiente Training & Club Feedback" }),
   ).toBeVisible();
-  const signin = await request.post("/api/auth/sign-in/email", {
-    data: { email: "exco@example.test", password: "e2e-only-password-12345" },
-    headers: { Origin: "http://127.0.0.1:4101" },
+  const result = await request.get("/api/admin/feedback/ardiente", {
+    headers: { Cookie: sessionCookie("reader") },
   });
-  expect(signin.status()).toBe(200);
-  const result = await request.get("/api/admin/feedback/ardiente");
   expect((await result.json()).responses.some((r: { id: string }) => r.id === receipt)).toBe(true);
 });
 
@@ -157,30 +166,64 @@ test("mobile instructor journey recovers a committed submission after a lost res
   );
 });
 
-test("EXCO signs in, reviews persisted feedback, filters and exports CSV", async ({ page }) => {
+test("EXCO reviews persisted feedback, filters and exports CSV with a signed session", async ({
+  page,
+}) => {
+  await requiredJourney(page);
+  await page.getByRole("button", { name: "Submit feedback", exact: true }).click();
+  await expect(
+    page.getByText("Your response has been saved. You can safely close this tab."),
+  ).toBeVisible();
+  await useSession(page, "admin");
   await page.goto("/admin");
-  await page.getByLabel("Email", { exact: true }).fill("exco@example.test");
-  await page.getByLabel("Password", { exact: true }).fill("e2e-only-password-12345");
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Survey responses" })).toBeVisible();
+  await page.getByRole("button", { name: "Individual responses", exact: true }).click();
+  await expect(page.getByLabel("Choose response", { exact: true })).toBeVisible();
+  await expect(page.locator(".individual-response")).toContainText("@browsertestmember");
+  await expect(page.locator(".individual-response")).toContainText("Reading check matched");
+  await page.screenshot({ path: "test-results/individual-responses-desktop.png", fullPage: true });
+  await page.setViewportSize({ width: 360, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+  await page.screenshot({ path: "test-results/individual-responses-mobile.png", fullPage: true });
   await page.getByLabel("Membership").selectOption("junior");
   await expect(page.getByRole("heading", { name: "No responses in this view yet." })).toBeVisible();
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("link", { name: "Export CSV" }).click();
   expect((await downloadPromise).suggestedFilename()).toBe("ardiente-feedback.csv");
   await page.getByRole("button", { name: "Sign out", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Sign in", exact: true })).toBeVisible();
-  await page.request.post("/api/auth/sign-up/email", {
-    data: {
-      email: "member@example.test",
-      password: "e2e-member-password-12345",
-      name: "Ordinary member",
-    },
-    headers: { Origin: "http://127.0.0.1:4101" },
-  });
+  await expect(
+    page.getByRole("button", { name: "Continue with Google", exact: true }),
+  ).toBeVisible();
+  await useSession(page, "member");
   await page.reload();
   await expect(page.getByRole("heading", { name: "EXCO access required." })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Survey responses" })).toHaveCount(0);
+});
+
+test("Google sign-in starts the provider flow and password login is disabled", async ({ page }) => {
+  await page.route("https://accounts.google.com/**", (route) =>
+    route.fulfill({
+      contentType: "text/html",
+      body: "<p>Google authorisation redirect intercepted by test</p>",
+    }),
+  );
+  await page.goto("/admin");
+  await expect(page.getByLabel("Password", { exact: true })).toHaveCount(0);
+  const passwordLogin = await page.request.post("/api/auth/sign-in/email", {
+    headers: { Origin: "http://127.0.0.1:4101" },
+    data: { email: "exco@example.test", password: "e2e-only-password-12345" },
+  });
+  expect(passwordLogin.status()).not.toBe(200);
+  await page.getByRole("button", { name: "Continue with Google", exact: true }).click();
+  await page.waitForURL("https://accounts.google.com/**");
+  const destination = new URL(page.url());
+  expect(destination.searchParams.get("redirect_uri")).toBe(
+    "http://127.0.0.1:4101/api/auth/callback/google",
+  );
+  expect(destination.searchParams.get("state")).toBeTruthy();
+  expect(destination.searchParams.get("code_challenge")).toBeTruthy();
 });
 
 test("keyboard navigation and navigation warning preserve the active draft", async ({ page }) => {
@@ -188,14 +231,19 @@ test("keyboard navigation and navigation warning preserve the active draft", asy
   await page.getByRole("button", { name: "Start form" }).click();
   await expect(page.getByRole("heading", { name: "About you", exact: true })).toBeFocused();
   await page.keyboard.press("Tab");
+  await expect(page.getByRole("textbox", { name: "Your name", exact: true })).toBeFocused();
+  await page.keyboard.type("Keyboard Member");
+  await page.keyboard.press("Tab");
+  await page.keyboard.type("@keyboardmember");
+  await page.keyboard.press("Tab");
   await expect(
-    page.getByRole("radio", { name: "Junior — Member for less than one year", exact: true }),
+    page.getByRole("radio", { name: "Junior (Member for less than one year)", exact: true }),
   ).toBeFocused();
   await page.keyboard.press("Space");
   page.once("dialog", (dialog) => void dialog.dismiss());
   await page.getByRole("link", { name: "EXCO access", exact: true }).click();
   await expect(
-    page.getByRole("radio", { name: "Junior — Member for less than one year", exact: true }),
+    page.getByRole("radio", { name: "Junior (Member for less than one year)", exact: true }),
   ).toBeChecked();
 });
 
@@ -214,6 +262,10 @@ test("an empty API response offers a working preview without submitting anything
   await page.getByRole("button", { name: "Start form", exact: true }).click();
   await expect(page.getByRole("heading", { name: "About you", exact: true })).toBeVisible();
   await page.getByRole("radio", { name: "Alumni", exact: true }).check();
+  await page.getByRole("textbox", { name: "Your name", exact: true }).fill("Preview Member");
+  await page
+    .getByRole("textbox", { name: "Telegram username", exact: true })
+    .fill("@previewmember");
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Training schedule", exact: true })).toBeVisible();
   expect(submissions).toEqual([]);
@@ -246,8 +298,12 @@ for (const width of [1280, 360]) {
     const progress = page.getByRole("progressbar", { name: "Required answers in this section" });
     await expect(progress).toHaveAttribute("value", "0");
     await page.getByRole("radio", { name: "Alumni", exact: true }).check();
-    await expect(progress).toHaveAttribute("value", "1");
-    await expect(page.getByRole("status")).toContainText("1 of 1 answered");
+    await page.getByRole("textbox", { name: "Your name", exact: true }).fill("Preview Member");
+    await page
+      .getByRole("textbox", { name: "Telegram username", exact: true })
+      .fill("@previewmember");
+    await expect(progress).toHaveAttribute("value", "3");
+    await expect(page.getByRole("status")).toContainText("3 of 3 answered");
     await page.getByRole("button", { name: "Continue", exact: true }).click();
     await expect(progress).toHaveAttribute("value", "0");
     if (width < 741) await page.getByLabel("Choose section", { exact: true }).click();
@@ -255,7 +311,7 @@ for (const width of [1280, 360]) {
     await page.getByRole("button", { name: "About you", exact: true }).click();
     await expect(page.getByRole("heading", { name: "About you", exact: true })).toBeFocused();
     await expect(page.getByRole("radio", { name: "Alumni", exact: true })).toBeChecked();
-    await expect(progress).toHaveAttribute("value", "1");
+    await expect(progress).toHaveAttribute("value", "3");
     if (width < 741) await page.getByLabel("Choose section", { exact: true }).click();
     await page.getByRole("button", { name: "Training schedule", exact: true }).click();
     await expect(

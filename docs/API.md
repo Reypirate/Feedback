@@ -21,7 +21,7 @@ to that CDN even when the JSON specification is available locally.
 
 ## Application endpoints
 
-Routes are defined in [`apps/api/app.ts`](../apps/api/app.ts).
+Routes are defined in [`apps/api/app-factory.ts`](../apps/api/app-factory.ts).
 
 | Method | Path              | Session           | Response                                      |
 | ------ | ----------------- | ----------------- | --------------------------------------------- |
@@ -86,15 +86,17 @@ for browser fallback order and how to add a setting.
 
 ## Authentication
 
-[`apps/api/auth.ts`](../apps/api/auth.ts) configures Better Auth with email/password
-authentication and the Drizzle PostgreSQL adapter. Use the React client from
-[`apps/web/src/lib/auth.ts`](../apps/web/src/lib/auth.ts) for signup, signin, signout, and
+[`apps/api/auth.ts`](../apps/api/auth.ts) configures Google authentication and the Drizzle
+PostgreSQL adapter. Only provisioned users can sign in; EXCO routes additionally require
+the administrator record. Email/password registration and sign-in are enabled only for
+isolated tests. Use the React client from
+[`apps/web/src/lib/auth.ts`](../apps/web/src/lib/auth.ts) for Google sign-in, signout, and
 session state. Browsers must include credentials when calling protected endpoints.
 
 | Method | Path                               | Purpose                                                   |
 | ------ | ---------------------------------- | --------------------------------------------------------- |
-| `POST` | `/api/auth/sign-up/email`          | Create an account using `name`, `email`, and `password`   |
-| `POST` | `/api/auth/sign-in/email`          | Sign in using `email` and `password`                      |
+| `POST` | `/api/auth/sign-in/social`         | Start the Google redirect flow with `provider: "google"`  |
+| `GET`  | `/api/auth/callback/google`        | Validate Google's callback and create the session         |
 | `POST` | `/api/auth/sign-out`               | Revoke the current session                                |
 | `GET`  | `/api/auth/get-session`            | Read the current session, or `null` when anonymous        |
 | `GET`  | `/api/auth/verify-email`           | Consume the token in a verification email                 |
@@ -103,7 +105,8 @@ session state. Browsers must include credentials when calling protected endpoint
 
 Verification emails on signup and password reset delivery require `SMTP_HOST`, `SMTP_PORT`,
 and `SMTP_FROM`. SMTP credentials are used when both username and password are supplied.
-The starter does not require verified email before signin or provide a reset-password UI.
+The Google flow requires verified identity claims. Mail/password endpoints are retained
+for test fixtures and optional mail integration; production does not enable password login.
 Use the running auth reference for complete request schemas and error codes.
 
 Cookie names and attributes are managed by Better Auth; let the browser and auth client

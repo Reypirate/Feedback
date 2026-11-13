@@ -9,18 +9,25 @@ export function SurveyIntro({
   definition: Definition;
   onStart: () => void;
 }) {
+  const collectsIdentity = definition.questions.some(
+    (question) => question.id === "respondent_name",
+  );
   return (
     <section className="intro-panel">
       <p className="term-label">{definition.term}</p>
       <h1>{definition.title}</h1>
       <p className="intro-description">
-        Tell us what’s working and what could improve — from training times and PT to instructors
-        and the {definition.exco}th EXCO.
+        Tell us what’s working and what could improve, from training times and PT to instructors and
+        the {definition.exco}th EXCO.
       </p>
       <div className="intro-info">
         <p>Takes about 5 minutes, longer if you write comments.</p>
-        <p>No name or email required.</p>
-        <p>All written responses and instructor feedback are optional.</p>
+        <p>
+          {collectsIdentity
+            ? "Your name and Telegram username are required."
+            : "No name or email required."}
+        </p>
+        <p>Written feedback and instructor comments are optional.</p>
       </div>
       <button className="primary-button" onClick={onStart}>
         Start form <ArrowRight size={18} />
@@ -28,10 +35,11 @@ export function SurveyIntro({
       <details className="collection-details">
         <summary>How your feedback is handled</summary>
         <p>
-          Authorised EXCO members can review responses. No name, email, student ID or account
-          identity is stored with your feedback. Hosting providers may keep operational logs, so
-          avoid identifying details in comments. Answers stay in this tab until you submit;
-          reloading discards them.
+          {collectsIdentity
+            ? "Authorised EXCO members can view your name, Telegram username and individual feedback, and may contact you about your response. "
+            : "Authorised EXCO members can review responses. No name, email, student ID or account identity is stored with your feedback. "}
+          Hosting providers may keep operational logs. Avoid including other people's personal
+          details in comments. Answers stay in this tab until you submit; reloading discards them.
         </p>
       </details>
     </section>

@@ -6,10 +6,14 @@ const questionSchema = z
     id: z.string().min(1),
     number: z.number().int().positive(),
     section: z.number().int().min(0).max(5),
-    type: z.enum(["radio", "checkboxes", "textarea", "matrix"]),
+    type: z.enum(["radio", "checkboxes", "textarea", "matrix", "text"]),
     label: z.string().min(1),
     required: z.boolean(),
     help: z.string().optional(),
+    maxLength: z.number().int().positive().max(2000).optional(),
+    format: z.literal("telegram").optional(),
+    reviewOnly: z.boolean().optional(),
+    attentionAnswer: z.string().optional(),
     options: z.array(optionSchema).optional(),
     rows: z.array(optionSchema).optional(),
     instructor: z.string().optional(),
@@ -35,7 +39,10 @@ export const definitionSchema = z
     if (!unique(ids) || !unique(definition.instructors.map((i) => i.id)))
       ctx.addIssue({ code: "custom", message: "IDs must be unique" });
     for (const q of definition.questions) {
-      if (q.type !== "textarea" && (!q.options?.length || !unique(q.options.map((o) => o.id))))
+      if (
+        !["textarea", "text"].includes(q.type) &&
+        (!q.options?.length || !unique(q.options.map((o) => o.id)))
+      )
         ctx.addIssue({ code: "custom", message: `Invalid options: ${q.id}` });
       if (q.type === "matrix" && (!q.rows?.length || !unique(q.rows.map((r) => r.id))))
         ctx.addIssue({ code: "custom", message: `Invalid rows: ${q.id}` });
@@ -90,7 +97,7 @@ const question = (
 ): Question => ({ number, section, id, type, label, required, ...extra });
 
 export function createFeedbackDefinition(term = "Current semester"): Definition {
-  return definitionSchema.parse({
+  const definition: Definition = {
     schemaVersion: 1,
     title: "Ardiente Training & Club Feedback",
     term,
@@ -100,7 +107,8 @@ export function createFeedbackDefinition(term = "Current semester"): Definition 
     sections: [
       {
         title: "About you",
-        description: "A little context helps us understand our members’ needs.",
+        description:
+          "Please share your name, Telegram username and membership status. Authorised EXCO members can identify your response and contact you about your feedback.",
       },
       {
         title: "Training schedule",
@@ -129,6 +137,15 @@ export function createFeedbackDefinition(term = "Current semester"): Definition 
       },
     ],
     questions: [
+      question(1, 0, "respondent_name", "text", "Your name", true, {
+        help: "Please enter the name you use in Ardiente.",
+        maxLength: 100,
+      }),
+      question(2, 0, "telegram_username", "text", "Telegram username", true, {
+        help: "Enter your Telegram username, for example @yourusername, so EXCO can follow up on your feedback.",
+        maxLength: 33,
+        format: "telegram",
+      }),
       question(
         1,
         0,
@@ -138,8 +155,8 @@ export function createFeedbackDefinition(term = "Current semester"): Definition 
         true,
         {
           options: opts([
-            ["junior", "Junior — Member for less than one year"],
-            ["senior", "Senior — Member for one year or more"],
+            ["junior", "Junior (Member for less than one year)"],
+            ["senior", "Senior (Member for one year or more)"],
             ["alumni", "Alumni"],
           ]),
         },
@@ -216,10 +233,10 @@ export function createFeedbackDefinition(term = "Current semester"): Definition 
         {
           help: "Please consider the timings independently of the dance genres, as genres change each semester.",
           options: opts([
-            ["both_wednesday", "Two Wednesday sessions — 7:30pm–9pm and 9pm–10:30pm"],
+            ["both_wednesday", "Two Wednesday sessions: 7:30pm–9pm and 9pm–10:30pm"],
             [
               "split_tuesday_wednesday",
-              "Sessions split across Tuesday and Wednesday — 7:30pm–9pm on each day",
+              "Sessions split across Tuesday and Wednesday: 7:30pm–9pm on each day",
             ],
             ["no_preference", "No preference"],
             ["neither", "Neither arrangement works well for me"],
@@ -282,6 +299,11 @@ export function createFeedbackDefinition(term = "Current semester"): Definition 
           help: "You may suggest a learning focus, difficulty level or class format. You can also share any concerns about introducing senior classes.",
         },
       ),
+      question(10, 2, "reading_note", "text", "Before the next section", true, {
+        help: "Please enter the word rhythm in the box below.",
+        maxLength: 40,
+        attentionAnswer: "rhythm",
+      }),
       question(
         10,
         3,
@@ -379,8 +401,24 @@ export function createFeedbackDefinition(term = "Current semester"): Definition 
         "textarea",
         "Is there anything else you would like to share with the 17th EXCO?",
       ),
+      question(30, 5, "data_consent", "checkboxes", "Consent to use your information", true, {
+        reviewOnly: true,
+        help: "Authorised EXCO members can view your individual response. To request withdrawal of consent or ask about your information, contact ardiente@sa.smu.edu.sg.",
+        options: opts([
+          [
+            "agree",
+            "By submitting this form, I consent to SMU Ardiente collecting and using my name, Telegram username and feedback to review training and club activities, improve the member experience and contact me about my feedback.",
+          ],
+        ]),
+      }),
     ],
-  });
+  };
+  let number = 0;
+  definition.questions = definition.questions.map((item) => ({
+    ...item,
+    number: item.showWhenSelected ? number : ++number,
+  }));
+  return definitionSchema.parse(definition);
 }
 
 export function isVisible(q: Question, answers: Answers, selected: string[]): boolean {
@@ -420,6 +458,7 @@ export function validateAnswers(
     if (!definition.questions.some((q) => q.id === key)) errors[key] = "Unknown question.";
   for (const q of definition.questions) {
     if (section !== undefined && q.section !== section) continue;
+    if (section !== undefined && q.reviewOnly) continue;
     // Hidden input is discarded even when a malicious client supplies it.
     if (!isVisible(q, values as Answers, selected)) continue;
     const value = values[q.id];
@@ -427,13 +466,20 @@ export function validateAnswers(
       errors[q.id] = message;
     };
     const validOption = (v: unknown) => typeof v === "string" && q.options?.some((o) => o.id === v);
-    if (value === undefined || value === "") {
+    if (
+      value === undefined ||
+      (typeof value === "string" && !value.trim()) ||
+      (Array.isArray(value) && !value.length)
+    ) {
       if (q.required) fail("Please answer this question.");
       continue;
     }
-    if (q.type === "textarea") {
-      if (typeof value !== "string" || value.length > 2000)
-        fail("Please use text of no more than 2,000 characters.");
+    if (q.type === "textarea" || q.type === "text") {
+      const maxLength = q.maxLength ?? 2000;
+      if (typeof value !== "string" || value.length > maxLength)
+        fail(`Please use text of no more than ${maxLength.toLocaleString("en-SG")} characters.`);
+      else if (q.format === "telegram" && !/^@?[A-Za-z0-9_]{1,32}$/u.test(value.trim()))
+        fail("Please enter a Telegram username, such as @yourusername, without spaces or a link.");
       else if (value.trim()) output[q.id] = value.trim();
     } else if (q.type === "radio") {
       if (!validOption(value)) fail("Please select a listed option.");
@@ -512,7 +558,8 @@ export function answerLabel(q: Question, value: Answers[string] | undefined): st
   if (value === undefined || value === "" || (Array.isArray(value) && !value.length))
     return "Skipped";
   const label = (id: string) => q.options?.find((o) => o.id === id)?.label ?? id;
-  if (typeof value === "string") return q.type === "textarea" ? value : label(value);
+  if (typeof value === "string")
+    return q.type === "textarea" || q.type === "text" ? value : label(value);
   if (Array.isArray(value)) return value.map(label).join("; ");
   return (q.rows ?? [])
     .map((r) => `${r.label}: ${value[r.id] ? label(value[r.id]) : "Skipped"}`)

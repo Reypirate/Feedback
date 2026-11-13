@@ -8,8 +8,13 @@ Built with the existing React 19/Vite, TanStack Router, React Hook Form and Hono
 monorepo. Responses and Better Auth account tables live in **Supabase PostgreSQL**, accessed
 through server-side Drizzle. The EXCO dashboard provides version and membership filters,
 counts with explicit denominators, restricted comments, CSV export and open/close controls.
+EXCO uses Google sign-in; members can submit feedback without an account.
+The form requires a name and Telegram username and asks for consent before submission.
+EXCO can inspect complete individual responses alongside the aggregate results.
 
 ## Start locally
+
+For hosting and automated releases, see [Vercel deployment and CI/CD](docs/VERCEL.md).
 
 To preview the form without configuring a database, run `pnpm preview:form` and open
 http://127.0.0.1:4000/preview. Preview responses are not submitted or saved.
@@ -22,9 +27,11 @@ pnpm install --frozen-lockfile
 Copy-Item .env.example .env
 ```
 
-Fill `.env` with your Supabase pooled runtime connection, direct/session migration
-connection, generated auth secret and intended EXCO credentials. The term label defaults to
+Fill `.env` with your Supabase PostgreSQL connections, generated app secret, Google OAuth
+client ID and secret, and intended EXCO email. Include an absolute `sslrootcert` path to the
+public CA in `certs/supabase-root-2021.crt` for verified database TLS. The term label defaults to
 **Current semester**. Follow [Feedback setup](docs/FEEDBACK.md) for the exact configuration.
+Follow [Google sign-in setup](docs/GOOGLE-AUTH-SETUP.md) to create the OAuth client.
 
 ```powershell
 pnpm db:migrate
@@ -33,8 +40,9 @@ pnpm dev
 ```
 
 Open http://localhost:4000 for the form and http://localhost:4000/admin for EXCO access.
-Setup explicitly provisions the specified EXCO account and publishes the initial immutable
-survey definition. Public signup does not grant EXCO access.
+Setup explicitly provisions a passwordless EXCO account and publishes the initial immutable
+survey definition. Google must verify the same email before it can sign in. Public signup
+and password login are disabled outside isolated test mode.
 
 ## Commands
 

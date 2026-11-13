@@ -4,12 +4,12 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./index.ts",
-    "./types": "./app.ts"
+    ".": "./server.ts",
+    "./types": "./app-factory.ts"
   },
   "scripts": {
-    "dev": "dotenv -e ../../.env -- bun run --hot index.ts",
-    "build": "bun build --minify --sourcemap --target=bun --outdir=dist index.ts",
+    "dev": "dotenv -e ../../.env -- bun run --hot bun-entry.ts",
+    "build": "bun build --minify --sourcemap --target=bun --outdir=dist --entry-naming=index.js bun-entry.ts",
     "start": "bun --env-file=../../.env ../../scripts/start.mjs",
     "typecheck": "tsc --noEmit --emitDeclarationOnly false -p tsconfig.json",
     "test": "vitest run"

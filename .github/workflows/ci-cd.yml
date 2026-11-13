@@ -1,0 +1,96 @@
+name: CI / CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  quality:
+    uses: ./.github/workflows/code-quality.yml
+  unit:
+    uses: ./.github/workflows/unit-tests.yml
+  integration:
+    uses: ./.github/workflows/integration-tests.yml
+  browser:
+    uses: ./.github/workflows/e2e-tests.yml
+  build:
+    uses: ./.github/workflows/build.yml
+  services:
+    uses: ./.github/workflows/vercel-services.yml
+  security:
+    uses: ./.github/workflows/security-checks.yml
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+      security-events: write
+    secrets:
+      GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+
+  deploy:
+    name: Deploy to Vercel
+    needs: [quality, unit, integration, browser, build, services, security]
+    if: >-
+      vars.VERCEL_PROJECT_ID != '' && vars.VERCEL_ORG_ID != '' &&
+      (github.event_name != 'pull_request' ||
+      (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && 'production' || 'preview' }}
+      url: ${{ steps.deploy.outputs.url }}
+    env:
+      VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+      VERCEL_TELEMETRY_DISABLED: "1"
+      DEPLOY_TARGET: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && 'production' || 'preview' }}
+    steps:
+      - name: Checkout the tested commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - name: Require deployment credentials
+        shell: bash
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo 'Set the VERCEL_TOKEN secret for this GitHub environment.' >&2
+            exit 1
+          fi
+      - name: Pull Vercel project settings
+        run: pnpm exec vercel pull --yes --environment="$DEPLOY_TARGET"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      - name: Build Vercel services
+        shell: bash
+        run: |
+          flags=()
+          if [ "$DEPLOY_TARGET" = production ]; then flags+=(--prod); fi
+          pnpm exec vercel build "${flags[@]}"
+      - name: Deploy the prebuilt services
+        id: deploy
+        shell: bash
+        run: |
+          flags=()
+          if [ "$DEPLOY_TARGET" = production ]; then flags+=(--prod); fi
+          pnpm exec vercel deploy --prebuilt --yes "${flags[@]}" > deployment-url.txt
+          url=$(tail -n 1 deployment-url.txt)
+          if [[ "$url" != https://* ]]; then
+            echo 'Vercel did not return an HTTPS deployment URL.' >&2
+            exit 1
+          fi
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          printf 'Deployment: %s\n' "$url" >> "$GITHUB_STEP_SUMMARY"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}

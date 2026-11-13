@@ -9,6 +9,10 @@ import {
 
 const definition = createFeedbackDefinition();
 export const minimalAnswers = {
+  respondent_name: "Test Member",
+  telegram_username: "@testmember",
+  reading_note: "rhythm",
+  data_consent: ["agree"],
   member_status: "junior",
   schedule_fit: { wed_1930: "very_well", wed_2100: "neutral", sat_0930: "not_at_all" },
   session_attendance: { wed_1930: "always", wed_2100: "often", sat_0930: "never" },
@@ -68,7 +72,14 @@ describe("feedback validation", () => {
     ).toEqual({});
   });
   it("validates only the current step during navigation", () => {
-    expect(validateAnswers(definition, { member_status: "alumni" }, [], 0).errors).toEqual({});
+    expect(
+      validateAnswers(
+        definition,
+        { member_status: "alumni", respondent_name: "Member", telegram_username: "@member" },
+        [],
+        0,
+      ).errors,
+    ).toEqual({});
   });
   it("canonicalises unordered choices and object keys", () => {
     const a = validateAnswers(
@@ -82,5 +93,34 @@ describe("feedback validation", () => {
       [],
     ).answers;
     expect(canonicalJson(a)).toBe(canonicalJson(b));
+  });
+  it("requires identity and affirmative consent, including rejecting whitespace and empty choices", () => {
+    const result = validateAnswers(
+      definition,
+      {
+        ...minimalAnswers,
+        respondent_name: "  ",
+        telegram_username: "https://t.me/member",
+        data_consent: [],
+      },
+      [],
+    );
+    expect(Object.keys(result.errors).sort()).toEqual([
+      "data_consent",
+      "respondent_name",
+      "telegram_username",
+    ]);
+    expect(
+      validateAnswers(definition, { ...minimalAnswers, data_consent: [] }, [], 5).errors,
+    ).toEqual({});
+  });
+  it("retains a missed reading check for EXCO review without rejecting the response", () => {
+    const result = validateAnswers(
+      definition,
+      { ...minimalAnswers, reading_note: "different" },
+      [],
+    );
+    expect(result.errors).toEqual({});
+    expect(result.answers.reading_note).toBe("different");
   });
 });

@@ -1,0 +1,24 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "git": { "deploymentEnabled": false },
+  "services": {
+    "api": {
+      "root": "apps/api",
+      "framework": "hono",
+      "runtime": "node",
+      "entrypoint": "server.ts"
+    },
+    "web": {
+      "root": "apps/web",
+      "framework": "vite",
+      "buildCommand": "pnpm run build",
+      "outputDirectory": "dist",
+      "rewrites": [{ "source": "/((?!@|.*\\.).*)", "destination": "/index.html" }]
+    }
+  },
+  "rewrites": [
+    { "source": "/api", "destination": { "service": "api" } },
+    { "source": "/api/(.*)", "destination": { "service": "api" } },
+    { "source": "/(.*)", "destination": { "service": "web" } }
+  ]
+}

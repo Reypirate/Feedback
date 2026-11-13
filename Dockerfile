@@ -31,6 +31,7 @@ WORKDIR /app
 
 COPY --from=build --chown=bun:bun /app/apps/api/dist ./apps/api/dist
 COPY --from=build --chown=bun:bun /app/apps/web/dist ./apps/web/dist
+COPY --from=build --chown=bun:bun /app/certs ./certs
 COPY --chown=bun:bun package.json ./
 
 USER bun
