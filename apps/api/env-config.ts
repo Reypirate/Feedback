@@ -5,6 +5,16 @@ const booleanString = z.enum(["true", "false"]).transform((value) => value === "
 const port = z.coerce.number().int().min(1).max(65535);
 
 export function createServerEnv(runtimeEnv: Record<string, string | undefined>) {
+  const deploymentOrigin = runtimeEnv.VERCEL_URL ? `https://${runtimeEnv.VERCEL_URL}` : undefined;
+  const resolvedEnv =
+    runtimeEnv.VERCEL === "1"
+      ? {
+          ...runtimeEnv,
+          NODE_ENV: "production",
+          VITE_APP_URL: runtimeEnv.VITE_APP_URL || deploymentOrigin,
+          VITE_API_URL: runtimeEnv.VITE_API_URL || runtimeEnv.VITE_APP_URL || deploymentOrigin,
+        }
+      : runtimeEnv;
   return createEnv({
     client: {
       VITE_APP_URL: z.url().default("http://localhost:4000"),
@@ -12,9 +22,13 @@ export function createServerEnv(runtimeEnv: Record<string, string | undefined>) 
     },
     server: {
       NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
-      DATABASE_URL: z.url(),
+      DATABASE_URL: z.url().refine((value) => /^postgres(?:ql)?:\/\//u.test(value), {
+        message: "Use a PostgreSQL connection string, not the Supabase HTTPS Project URL.",
+      }),
       BETTER_AUTH_SECRET: z.string().min(32),
       BETTER_AUTH_URL: z.url().optional(),
+      GOOGLE_CLIENT_ID: z.string().optional(),
+      GOOGLE_CLIENT_SECRET: z.string().optional(),
       PORT: port.default(4001),
       STATIC_ROOT: z.string().default("apps/web/dist"),
       SMTP_HOST: z.string().optional(),
@@ -31,7 +45,7 @@ export function createServerEnv(runtimeEnv: Record<string, string | undefined>) 
       FORCE_PATH_STYLE: booleanString.default(true),
     },
     clientPrefix: "VITE_",
-    runtimeEnv,
+    runtimeEnv: resolvedEnv,
     emptyStringAsUndefined: true,
   });
 }

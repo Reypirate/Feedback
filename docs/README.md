@@ -7,6 +7,9 @@ commands from the repository root unless a guide says otherwise.
 
 ## Guides
 
+For the two-service deployment and its GitHub Actions pipeline, see
+[Vercel deployment and CI/CD](VERCEL.md).
+
 | Guide                              | Read it when you need to                                                                 |
 | ---------------------------------- | ---------------------------------------------------------------------------------------- |
 | [Architecture](ARCHITECTURE.md)    | Understand package boundaries, client/server communication, configuration, and data flow |

@@ -1,4 +1,4 @@
-import { createApp } from "../../apps/api/app";
+import { createApp } from "../../apps/api/app-factory";
 import { createAuth } from "../../apps/api/auth";
 import { createServerEnv } from "../../apps/api/env-config";
 import { createDb, eq, schema, sql } from "../../packages/db";

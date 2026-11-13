@@ -1,4 +1,4 @@
-import { createApp } from "../../apps/api/app";
+import { createApp } from "../../apps/api/app-factory";
 import { createAuth } from "../../apps/api/auth";
 import { createServerEnv } from "../../apps/api/env-config";
 import { publishFeedback } from "../../apps/api/feedback-publish";
@@ -37,6 +37,10 @@ let adminCookie = "";
 let memberCookie = "";
 const definition = createFeedbackDefinition();
 const answers = {
+  respondent_name: "Integration Member",
+  telegram_username: "@integrationmember",
+  reading_note: "rhythm",
+  data_consent: ["agree"],
   member_status: "senior",
   schedule_fit: { wed_1930: "very_well", wed_2100: "neutral", sat_0930: "not_at_all" },
   session_attendance: { wed_1930: "always", wed_2100: "often", sat_0930: "never" },
@@ -112,7 +116,6 @@ describe("durable feedback boundaries", () => {
       DATABASE_MIGRATION_URL: isolated.toString(),
       BETTER_AUTH_SECRET: "feedback-cli-test-secret-at-least-32-characters",
       FEEDBACK_ADMIN_EMAIL: "cli-exco@example.com",
-      FEEDBACK_ADMIN_PASSWORD: "test-only-cli-admin-password",
       SURVEY_SLUG: slug,
       SURVEY_TERM: "CLI semester",
     };
@@ -140,8 +143,11 @@ describe("durable feedback boundaries", () => {
       .from(schema.user)
       .where(eq(schema.user.email, setupEnv.FEEDBACK_ADMIN_EMAIL));
     expect(await store.isAdmin(admin.id)).toBe(true);
+    expect(
+      await db.select().from(schema.account).where(eq(schema.account.userId, admin.id)),
+    ).toEqual([]);
   });
-  it("stores one anonymous response and acknowledges a lost-response retry", async () => {
+  it("stores one identified response with consent and acknowledges a lost-response retry", async () => {
     const { slug, input } = await fixture();
     const first = await app.request(`/api/feedback/${slug}/responses`, post(input));
     expect(first.status).toBe(200);
@@ -171,6 +177,21 @@ describe("durable feedback boundaries", () => {
     await expect(
       store.submit({ ...input, submissionKey: crypto.randomUUID() }),
     ).rejects.toMatchObject({ status: 409 });
+  });
+  it("requires consent at the API boundary before storing identifiable feedback", async () => {
+    const { slug, input } = await fixture();
+    const response = await app.request(
+      `/api/feedback/${slug}/responses`,
+      post({ ...input, answers: { ...input.answers, data_consent: [] } }),
+    );
+    expect(response.status).toBe(422);
+    expect((await response.json()).fields.data_consent).toBeTruthy();
+    expect(
+      await db
+        .select()
+        .from(schema.surveyResponses)
+        .where(eq(schema.surveyResponses.surveyId, input.surveyId)),
+    ).toEqual([]);
   });
   it("rejects forged fields and removes hidden feedback on direct requests", async () => {
     const { input, slug } = await fixture();

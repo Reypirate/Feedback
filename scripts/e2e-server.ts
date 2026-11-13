@@ -5,6 +5,8 @@ import { createDb, eq, schema, sql } from "../packages/db";
 import { migrateDb } from "../packages/db/migrations";
 import { createFeedbackDefinition } from "../packages/shared/feedback";
 
+import { mkdirSync, writeFileSync } from "node:fs";
+
 const databaseName = process.env.FEEDBACK_E2E_DATABASE_NAME;
 if (!databaseName || !/^feedback_e2e_[a-f0-9]+$/u.test(databaseName))
   throw new Error("An isolated E2E database name is required.");
@@ -23,10 +25,41 @@ const env = createServerEnv(process.env);
 const db = createDb(isolated.toString(), { max: 1 });
 try {
   await migrateDb(db);
-  const auth = createAuth(env, db, () => Promise.resolve());
-  await auth.api.signUpEmail({
-    body: { email: "exco@example.test", password: "e2e-only-password-12345", name: "Test EXCO" },
+  // Seed signed sessions outside the production server. There is no test login endpoint.
+  const auth = createAuth({ ...env, NODE_ENV: "test" }, db, () => Promise.resolve());
+  async function session(path: string, body: Record<string, string>) {
+    const response = await auth.handler(
+      new Request(`${env.VITE_API_URL}/api/auth/${path}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Origin: env.VITE_APP_URL },
+        body: JSON.stringify(body),
+      }),
+    );
+    if (!response.ok) throw new Error("Unable to create isolated browser test session.");
+    return response.headers
+      .getSetCookie()
+      .map((cookie) => cookie.split(";")[0])
+      .join("; ");
+  }
+  const reader = await session("sign-up/email", {
+    email: "exco@example.test",
+    password: "e2e-only-password-12345",
+    name: "Test EXCO",
   });
+  const adminSession = await session("sign-in/email", {
+    email: "exco@example.test",
+    password: "e2e-only-password-12345",
+  });
+  const member = await session("sign-up/email", {
+    email: "member@example.test",
+    password: "e2e-member-password-12345",
+    name: "Ordinary member",
+  });
+  mkdirSync("test-results", { recursive: true });
+  writeFileSync(
+    `test-results/${databaseName}-sessions.json`,
+    JSON.stringify({ reader, admin: adminSession, member }),
+  );
   const [admin] = await db
     .select()
     .from(schema.user)

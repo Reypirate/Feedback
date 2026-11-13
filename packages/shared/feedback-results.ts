@@ -2,6 +2,16 @@ import type { Definition, Question, StoredResponse } from "./feedback";
 
 import { isVisible } from "./feedback";
 
+export function readingCheck(definition: Definition, response: StoredResponse) {
+  const question = definition.questions.find((item) => item.attentionAnswer);
+  if (!question) return null;
+  const value = response.answers[question.id];
+  return typeof value === "string" &&
+    value.trim().toLowerCase() === question.attentionAnswer?.trim().toLowerCase()
+    ? "Reading check matched"
+    : "Reading check needs review";
+}
+
 export function distribution(
   _definition: Definition,
   responses: StoredResponse[],

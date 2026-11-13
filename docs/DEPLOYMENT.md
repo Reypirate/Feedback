@@ -2,7 +2,10 @@
 
 [Documentation index](README.md)
 
-Production uses one Bun process for the API and the compiled React app. PostgreSQL is an
+For the two-service Vercel deployment, follow [Vercel deployment and CI/CD](VERCEL.md).
+The remainder of this guide covers the alternative Bun server and Docker deployment.
+
+The server deployment uses one Bun process for the API and the compiled React app. PostgreSQL is an
 external service. SMTP and S3-compatible storage are optional integrations. The supplied
 Compose file is for local development infrastructure; the application image is built with
 the root [`Dockerfile`](../Dockerfile).

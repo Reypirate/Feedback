@@ -1,3 +1,4 @@
+import { rmSync } from "node:fs";
 import { createRequire } from "node:module";
 const require = createRequire(new URL("../../packages/db/package.json", import.meta.url));
 const postgres = require("postgres");
@@ -14,5 +15,6 @@ export default async function teardown() {
     await client`drop database if exists ${client(databaseName)} with (force)`;
   } finally {
     await client.end();
+    rmSync(`test-results/${databaseName}-sessions.json`, { force: true });
   }
 }

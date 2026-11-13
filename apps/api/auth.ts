@@ -6,6 +6,7 @@ import type { SendMailOptions } from "nodemailer";
 import * as schema from "@repo/db/schema";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { APIError } from "better-auth/api";
 import { openAPI } from "better-auth/plugins";
 
 type SendMail = (message: SendMailOptions) => Promise<void>;
@@ -14,7 +15,8 @@ function emailOptions(env: ServerEnv, sendMail: SendMail) {
   const hasMailer = Boolean(env.SMTP_HOST && env.SMTP_PORT && env.SMTP_FROM);
   return {
     emailAndPassword: {
-      enabled: true,
+      // Password authentication is used only to create isolated test fixtures.
+      enabled: env.NODE_ENV === "test",
       ...(hasMailer
         ? {
             sendResetPassword: async ({ user, url }) => {
@@ -50,6 +52,39 @@ export function createAuth(env: ServerEnv, db: ReturnType<typeof createDb>, send
     telemetry: { enabled: false },
     advanced: { disableOriginCheck: false, disableCSRFCheck: false },
     ...emailOptions(env, sendMail),
+    socialProviders:
+      env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
+        ? {
+            google: {
+              clientId: env.GOOGLE_CLIENT_ID,
+              clientSecret: env.GOOGLE_CLIENT_SECRET,
+              prompt: "select_account",
+              disableSignUp: true,
+              disableIdTokenSignIn: true,
+              mapProfileToUser(profile) {
+                if (
+                  profile.email_verified !== true ||
+                  profile.aud !== env.GOOGLE_CLIENT_ID ||
+                  !["https://accounts.google.com", "accounts.google.com"].includes(profile.iss) ||
+                  profile.exp <= Math.floor(Date.now() / 1000)
+                )
+                  throw new APIError("FORBIDDEN", {
+                    message: "A verified Google identity is required.",
+                  });
+                return {};
+              },
+            },
+          }
+        : {},
+    account: {
+      accountLinking: {
+        enabled: true,
+        trustedProviders: [],
+        // Trusted setup creates passwordless users; Google must verify the matching email.
+        requireLocalEmailVerified: false,
+        allowDifferentEmails: false,
+      },
+    },
     plugins: [openAPI({ path: "/docs" })],
     secret: env.BETTER_AUTH_SECRET,
     baseURL: env.BETTER_AUTH_URL ?? `${env.VITE_API_URL}/api/auth`,

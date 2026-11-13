@@ -86,9 +86,9 @@ validated server environment defined by [`env-config.ts`](../apps/api/env-config
 
 ## Requests and authentication
 
-[`createApp`](../apps/api/app.ts) accepts the public environment and an auth interface,
+[`createApp`](../apps/api/app-factory.ts) accepts the public environment and an auth interface,
 so HTTP tests can exercise routes without starting a server or connecting to PostgreSQL.
-[`index.ts`](../apps/api/index.ts) supplies the real database, Better Auth instance, and
+[`server.ts`](../apps/api/server.ts) supplies the real database, Better Auth instance, and
 mailer for the running server.
 
 Each request passes through request ID, structured logging, secure headers, and credentialed
@@ -97,7 +97,8 @@ are delegated to Better Auth before application routes and JSON API 404 handling
 
 The session middleware reads the request headers through Better Auth and puts the verified
 user in Hono context. `/api/me` returns that user with `Cache-Control: no-store`.
-Authentication uses PostgreSQL-backed sessions and email/password accounts. Origin and CSRF
+Authentication uses PostgreSQL-backed sessions and Google identities linked to provisioned
+accounts. Email/password login is limited to isolated tests. Origin and CSRF
 checks are enabled. Auth rate limiting uses process-local memory with a configured limit
 of 20 requests per 60 seconds; deployment topology and client IP handling matter when
 scaling this behavior.

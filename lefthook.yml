@@ -8,5 +8,5 @@ pre-commit:
 
     - name: oxfmt
       glob: "*.{js,ts,jsx,tsx,md,css,yml,yaml,json}"
-      run: pnpm exec oxfmt --write {staged_files}
+      run: pnpm exec oxfmt --threads=2 --write {staged_files}
       stage_fixed: true

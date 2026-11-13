@@ -8,6 +8,7 @@ import { useState } from "react";
 import { env } from "../../env";
 import { authClient } from "../../lib/auth";
 import { FeedbackApiError, feedbackRequest, jsonPost } from "./api";
+import { IndividualResponses } from "./individual-responses";
 
 type Results = {
   survey: PublicSurvey;
@@ -34,19 +35,20 @@ function AdminLogin() {
   return (
     <div className="login-card">
       <h1>EXCO sign in</h1>
-      <p>Sign in to view survey responses.</p>
-      <form
-        onSubmit={async (event) => {
-          event.preventDefault();
+      <p>Use your authorised Google account to view survey responses.</p>
+      <button
+        className="primary-button"
+        disabled={pending}
+        onClick={async () => {
           setPending(true);
           setFailure("");
-          const data = new FormData(event.currentTarget);
           try {
-            const result = await authClient.signIn.email({
-              email: String(data.get("email")),
-              password: String(data.get("password")),
+            const result = await authClient.signIn.social({
+              provider: "google",
+              callbackURL: `${window.location.origin}${window.location.pathname}`,
+              errorCallbackURL: `${window.location.origin}${window.location.pathname}?error=google_sign_in`,
             });
-            if (result.error) setFailure(result.error.message ?? "Unable to sign in.");
+            if (result.error) setFailure("Google sign-in is unavailable. Please contact EXCO.");
           } catch {
             setFailure("Couldn’t connect. Please try again.");
           } finally {
@@ -54,26 +56,15 @@ function AdminLogin() {
           }
         }}
       >
-        <label htmlFor="email">Email</label>
-        <input id="email" name="email" type="email" autoComplete="username" required />
-        <label htmlFor="password">Password</label>
-        <input
-          id="password"
-          name="password"
-          type="password"
-          autoComplete="current-password"
-          required
-        />
-        {failure && (
-          <p className="field-error" role="alert">
-            {failure}
-          </p>
-        )}
-        <button className="primary-button" disabled={pending}>
-          {pending ? "Signing in…" : "Sign in"}
-          <ArrowRight size={17} />
-        </button>
-      </form>
+        {pending ? "Opening Google…" : "Continue with Google"}
+        <ArrowRight size={17} />
+      </button>
+      {(failure || new URLSearchParams(window.location.search).has("error")) && (
+        <p className="field-error" role="alert">
+          {failure ||
+            "Google sign-in was not completed. Please use your authorised EXCO account and try again."}
+        </p>
+      )}
       <p className="form-footnote">Access is limited to accounts provisioned for EXCO.</p>
     </div>
   );
@@ -81,7 +72,7 @@ function AdminLogin() {
 function AdminResults({ slug, userId }: { slug: string; userId: string }) {
   const [version, setVersion] = useState("");
   const [member, setMember] = useState("");
-  const [tab, setTab] = useState<"summary" | "comments">("summary");
+  const [tab, setTab] = useState<"summary" | "comments" | "individual">("summary");
   const [failure, setFailure] = useState("");
   const [changing, setChanging] = useState(false);
   const params = new URLSearchParams();
@@ -210,16 +201,25 @@ function AdminResults({ slug, userId }: { slug: string; userId: string }) {
         <button aria-pressed={tab === "comments"} onClick={() => setTab("comments")}>
           Written feedback
         </button>
+        <button aria-pressed={tab === "individual"} onClick={() => setTab("individual")}>
+          Individual responses
+        </button>
       </div>
       {data.responses.length === 0 ? (
         <div className="empty-state">
           <h2>No responses in this view yet.</h2>
           <p>Try another membership filter or return after members have shared their feedback.</p>
         </div>
+      ) : tab === "individual" ? (
+        <IndividualResponses
+          key={`${data.versionId}-${member}`}
+          definition={data.definition}
+          responses={data.responses}
+        />
       ) : tab === "summary" ? (
         <div className="results-grid">
           {data.definition.questions
-            .filter((q) => q.type !== "textarea")
+            .filter((q) => q.type !== "textarea" && q.type !== "text" && !q.reviewOnly)
             .flatMap((q) =>
               (q.rows ?? [{ id: undefined, label: "" }]).map((row) => {
                 const result = distribution(data.definition, data.responses, q, row.id);

@@ -1,6 +1,7 @@
-import { serveStatic } from "hono/bun";
+import type { ApiEnv } from "./session";
+import type { Hono } from "hono";
 
-import { createApp } from "./app";
+import { createApp } from "./app-factory";
 import { createAuth } from "./auth";
 import { db } from "./db";
 import { env } from "./env";
@@ -17,14 +18,5 @@ const { app } = createApp({
   },
 });
 
-if (env.NODE_ENV === "production") {
-  app.use("/*", serveStatic({ root: env.STATIC_ROOT }));
-  app.get("*", serveStatic({ path: `${env.STATIC_ROOT}/index.html` }));
-}
-
-export type { ApiRoutes } from "./app";
-
-export default {
-  fetch: app.fetch,
-  port: env.PORT,
-};
+// Vercel's Hono adapter consumes the app directly; Bun's combined server wraps it.
+export default app satisfies Hono<ApiEnv>;

@@ -1,0 +1,39 @@
+name: Migrate production database
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-database-migrations
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    env:
+      NODE_EXTRA_CA_CERTS: ${{ github.workspace }}/certs/supabase-root-2021.crt
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - name: Require database connection
+        shell: bash
+        env:
+          DATABASE_MIGRATION_URL: ${{ secrets.DATABASE_MIGRATION_URL }}
+        run: |
+          if [ -z "$DATABASE_MIGRATION_URL" ]; then
+            echo 'Set DATABASE_MIGRATION_URL in the production GitHub environment.' >&2
+            exit 1
+          fi
+      - name: Apply committed migrations
+        run: pnpm db:migrate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_MIGRATION_URL }}

@@ -35,6 +35,8 @@ export default defineConfig({
       VITE_API_URL: baseURL,
       BETTER_AUTH_URL: `${baseURL}/api/auth`,
       BETTER_AUTH_SECRET: randomBytes(32).toString("hex"),
+      GOOGLE_CLIENT_ID: "e2e-google-client.apps.googleusercontent.com",
+      GOOGLE_CLIENT_SECRET: "e2e-google-secret",
       DATABASE_URL:
         process.env.TEST_DATABASE_URL ?? "postgres://postgres:password@localhost:5433/app_test",
       SMTP_HOST: "",

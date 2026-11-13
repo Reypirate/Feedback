@@ -10,6 +10,26 @@ const required = {
 afterEach(() => vi.restoreAllMocks());
 
 describe("server environment", () => {
+  it("uses the public Vercel deployment origin and disables test mode on Vercel", () => {
+    const env = createServerEnv({
+      ...required,
+      VERCEL: "1",
+      VERCEL_URL: "feedback-preview.vercel.app",
+      NODE_ENV: "test",
+    });
+    expect(env.VITE_APP_URL).toBe("https://feedback-preview.vercel.app");
+    expect(env.VITE_API_URL).toBe(env.VITE_APP_URL);
+    expect(env.NODE_ENV).toBe("production");
+  });
+  it("keeps an explicit public domain on Vercel", () => {
+    const env = createServerEnv({
+      ...required,
+      VERCEL: "1",
+      VERCEL_URL: "deployment.vercel.app",
+      VITE_APP_URL: "https://feedback.example.com",
+    });
+    expect(env.VITE_API_URL).toBe("https://feedback.example.com");
+  });
   it("parses false strings as false", () => {
     const env = createServerEnv({ ...required, SMTP_SECURE: "false", FORCE_PATH_STYLE: "false" });
     expect(env.SMTP_SECURE).toBe(false);
@@ -31,6 +51,7 @@ describe("server environment", () => {
     { AWS_S3_ENDPOINT: "not-a-url" },
     { BETTER_AUTH_SECRET: "too-short" },
     { DATABASE_URL: undefined, CI: "true" },
+    { DATABASE_URL: "https://example.supabase.co" },
   ])("rejects invalid configuration: %j", (overrides) => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     expect(() => createServerEnv({ ...required, ...overrides })).toThrow();

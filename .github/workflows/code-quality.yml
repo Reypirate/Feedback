@@ -1,16 +1,14 @@
 name: Code Quality
 
 on:
-  push:
-    branches: [main]
-  pull_request:
+  workflow_call:
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: code-quality-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -26,6 +24,8 @@ jobs:
       - uses: ./.github/actions/setup
       - name: Check formatting
         run: pnpm format:check
+      - name: Validate Vercel services configuration
+        run: pnpm vercel:check
       - name: Lint
         run: pnpm lint
       - name: Typecheck

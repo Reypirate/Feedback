@@ -9,6 +9,8 @@ dist-ssr
 
 # Environment
 .env
+.env.*
+.vercel
 .env*.local
 !.env.example
 

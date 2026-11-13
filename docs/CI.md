@@ -4,7 +4,8 @@
 
 ## Checks
 
-The workflows run on pushes to `main` and on pull requests. Each check runs independently,
+The `CI / CD` workflow calls the reusable validation workflows on pushes to `main` and
+on pull requests. Each check runs independently,
 so a secret-scanner failure does not prevent tests from running. Manual runs are available
 through `workflow_dispatch`. Security checks also run every Monday at 06:00 UTC.
 
@@ -18,6 +19,7 @@ through `workflow_dispatch`. Security checks also run every Monday at 06:00 UTC.
 | Integration Tests | Integration tests              | Committed migrations and actual Better Auth/PostgreSQL flows in isolated databases     |
 | Build             | Production build               | Both application bundles, uploaded as the `production-build` artifact                  |
 | E2E Tests         | E2E tests                      | Production build and Chromium smoke tests; reports/traces upload on failure            |
+| Vercel Services   | Multi-service routing          | API paths, SPA links, runtime settings and frontend assets through Vercel dev          |
 | Release Please    | release-please                 | Maintains a release PR and publishes the GitHub release after that PR is merged        |
 
 Application jobs share `.github/actions/setup/action.yml`: Node 22.23.3, Bun 1.3.13, pnpm
@@ -27,11 +29,11 @@ the workflows and the composite action. No application credentials are needed fo
 
 jsdom 30 requires Node `^22.22.2 || ^24.15.0 || >=26.0.0`. The package engine range and
 development setup follow those requirements. CI and Docker build stages use Node 22.23.3;
-the production server continues to run on Bun.
+the container server runs on Bun and Vercel's Hono service runs on Node.js 24.
 
-The E2E suite currently tests anonymous production behavior and needs no database service.
-The integration workflow owns a PostgreSQL 17 service and creates/drops its own test database.
-If browser tests begin signing users in, provision PostgreSQL and migrations in that workflow.
+The integration and browser workflows each own a PostgreSQL 17 service and use isolated
+test databases. Browser tests cover form submission, consent validation, Google login
+availability and provisioned EXCO access without contacting Google's OAuth service.
 
 The migration-history check supplies a placeholder `DATABASE_URL` because Drizzle requires
 connection settings when loading its configuration. History and schema-drift checks work
@@ -42,8 +44,23 @@ downloadable production outputs; E2E builds the exact checkout it will serve in 
 
 ## GitHub setup
 
+The deployment job waits for every validation workflow, including a Vercel Services
+routing test. Set up the Vercel project IDs, protected environments and token as described
+in [Vercel deployment and CI/CD](VERCEL.md). Until the project IDs are configured, deployment
+is skipped. Production uses `main`; reviewed same-repository PRs can deploy previews.
+Native Vercel Git deployment is disabled so it cannot bypass the CI checks.
+
+The separately dispatched production database migration workflow runs only on `main`.
+It never runs during a build or ordinary deployment. Survey publication remains a separate
+reviewed step. Dependency overrides pin patched transitive tools where upstream Vercel
+dependencies lag; re-run the service routing test when changing them.
+
+Gitleaks scans full Git history. `.gitleaksignore` documents one exact historical false
+positive: an empty password variable consumed the following literal survey-slug line.
+No file or secret rule is broadly excluded.
+
 Let workflows run once before configuring required checks in a new repository. Require the
-eight validation checks above; Release Please only runs on `main` and should not be required
+validation checks above; Release Please only runs on `main` and should not be required
 on ordinary pull requests. Run every validation workflow for documentation-only PRs too,
 so required checks do not remain pending.
 

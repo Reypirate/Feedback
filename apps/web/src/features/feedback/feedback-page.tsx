@@ -237,7 +237,7 @@ export function SurveyForm({
     />
   );
   const stepQuestions = definition.questions.filter(
-    (q) => q.section === step && isVisible(q, answers, selected),
+    (q) => q.section === step && !q.reviewOnly && isVisible(q, answers, selected),
   );
   const requiredQuestions = stepQuestions.filter((q) => q.required);
   const stepValidation = validateAnswers(definition, answers, selected, step);
@@ -305,8 +305,8 @@ export function SurveyForm({
                     <button
                       className="text-button"
                       onClick={() => {
-                        if (q && step !== q.section) {
-                          setStep(q.section);
+                        if (q && step !== (q.reviewOnly ? 6 : q.section)) {
+                          setStep(q.reviewOnly ? 6 : q.section);
                           setEditing(true);
                         } else
                           document
@@ -383,7 +383,7 @@ export function SurveyForm({
             {step === 6 &&
               definition.sections.map((section, index) => {
                 const questions = definition.questions.filter(
-                  (q) => q.section === index && isVisible(q, answers, selected),
+                  (q) => q.section === index && !q.reviewOnly && isVisible(q, answers, selected),
                 );
                 const answered = questions.filter((q) => !isBlank(answers[q.id]));
                 const missingRequired = questions.filter(
@@ -429,6 +429,7 @@ export function SurveyForm({
                   </section>
                 );
               })}
+            {step === 6 && definition.questions.filter((q) => q.reviewOnly).map(renderQuestion)}
           </fieldset>
           {failure && (
             <div className="error-summary" role="alert">
