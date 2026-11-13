@@ -55,7 +55,8 @@ async function ready() {
     if (child.exitCode !== null) throw new Error(`Vercel exited with ${child.exitCode}.\n${log}`);
     try {
       const response = await fetch(`${origin}/api/health`, { signal: AbortSignal.timeout(2000) });
-      if (response.ok && (await response.json()).status === "ok") return;
+      const body = await response.text();
+      if (response.ok && JSON.parse(body).status === "ok") return;
     } catch {
       /* Both framework development servers need time to start. */
     }
@@ -87,6 +88,9 @@ try {
     const asset = await fetch(`${origin}${path}`);
     assert.equal(asset.status, 200, path);
     assert.match(asset.headers.get("content-type") ?? "", /javascript/u, path);
+    const source = await asset.text();
+    assert.ok(source.trim().length > 0, path);
+    assert.doesNotMatch(source, /^\s*<!doctype html/iu, path);
   }
   console.log(
     "Vercel service routing passed: API paths, JSON 404s, SPA links, runtime settings and frontend assets.",
